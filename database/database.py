@@ -15,6 +15,11 @@ import unittest
 #
 class CoinCourseEntry:
 
+    #
+    # Initialize entry
+    #
+    # @param timestamp Event timestamp in UTC unix epoch seconds
+    #
     def __init__ (self, timestamp, id, source, course, currency):
 
         assert isinstance (timestamp, int)
@@ -48,6 +53,11 @@ class CoinCourseEntry:
 #
 class CurrencyCourseEntry:
 
+    #
+    # Initialize entry
+    #
+    # @param timestamp Event timestamp in UTC unix epoch seconds
+    #
     def __init__ (self, timestamp, id, course):
 
         assert isinstance (timestamp, int)
@@ -74,6 +84,11 @@ class CurrencyCourseEntry:
 #
 class NewsEntry:
 
+    #
+    # Initialize entry
+    #
+    # @param timestamp Event timestamp in UTC unix epoch seconds
+    #
     def __init__ (self, timestamp, source, text):
 
         assert isinstance (timestamp, int)
@@ -253,7 +268,7 @@ class Database:
 
 
 #--------------------------------------------------------------------------
-# Unittest
+# Unittests
 #
 class TestDatabase (unittest.TestCase):
 
