@@ -347,7 +347,7 @@ if __name__ == '__main__':
 
     parser.add_argument ('-c', '--create', action='store_true', default=False, help='Create new database')
     parser.add_argument ('-l', '--list',   action='store', choices=['currencies', 'coins', 'news'], help='List database content')
-    parser.add_argument ('database',       type=str, default=None, help='Trained model data (meta data file)')
+    parser.add_argument ('database',       type=str, default=None, help='Database file')
 
     args = parser.parse_args ()
 

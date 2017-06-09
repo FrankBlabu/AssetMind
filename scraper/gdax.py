@@ -8,6 +8,7 @@
 import argparse
 import GDAX
 import pandas as pd
+import sys
 import time
 import unittest
 
@@ -22,20 +23,24 @@ class GDAXScraper:
     def __init__ (self):
         pass
 
-    def execute (self, database):
+    def execute (self, database, start=None, end=None):
+
         client = GDAX.PublicClient ()
+
+        start = time.strftime ('%Y-%m-%d', start) if not start is None else ''
+        end   = time.strftime ('%Y-%m-%d', end  ) if not end   is None else ''
 
         #
         # Each entry has the format (time, low, high, open, close, volume)
         # Time is in unix epoch format
         #
-        for rate in client.getProductHistoricRates (product='ETH-USD', granularity=60*60*24):
+        for rate in client.getProductHistoricRates (product='ETH-USD', granularity=60*60*24, start=start, end=end):
             database.add (CoinCourseEntry (rate[0] + time.timezone, 'eth', 'gdax', (rate[1] + rate[2]) / 2, 'usd'))
 
-        for rate in client.getProductHistoricRates (product='BTC-USD', granularity=60*60*24):
+        for rate in client.getProductHistoricRates (product='BTC-USD', granularity=60*60*24, start=start, end=end):
             database.add (CoinCourseEntry (rate[0] + time.timezone, 'btc', 'gdax', (rate[1] + rate[2]) / 2, 'usd'))
 
-        for rate in client.getProductHistoricRates (product='LTC-USD', granularity=60*60*24):
+        for rate in client.getProductHistoricRates (product='LTC-USD', granularity=60*60*24, start=start, end=end):
             database.add (CoinCourseEntry (rate[0] + time.timezone, 'ltc', 'gdax', (rate[1] + rate[2]) / 2, 'usd'))
 
 #--------------------------------------------------------------------------
@@ -52,16 +57,27 @@ class TestGDAXScraper (unittest.TestCase):
 #
 if __name__ == '__main__':
 
+    def to_date (s):
+        try:
+            return time.strptime (s, '%Y-%m-%d')
+        except ValueError:
+            raise argparse.ArgumentTypeError ('Not a valid date: {0}'.format (s))
+
     #
     # Parse command line arguments
     #
     parser = argparse.ArgumentParser ()
+    parser.add_argument ('-s', '--startdate', required=False, type=to_date, help='Start date (YYYY-MM-DD)')
+    parser.add_argument ('-e', '--enddate',   required=False, type=to_date, help='End date (YYYY-MM-DD)')
+    parser.add_argument ('-d', '--database',  required=False, type=str, default=':memory:', help='Database file')
 
-    database = Database (':memory:')
+    args = parser.parse_args ()
+
+    database = Database (args.database)
     database.create ()
 
     scraper = GDAXScraper ()
-    scraper.execute (database)
+    scraper.execute (database, start=args.startdate, end=args.enddate)
 
     entries = database.get_coin_course_entries ()
 
@@ -79,4 +95,5 @@ if __name__ == '__main__':
         data['currency'].append (entry.currency)
 
     frame = pd.DataFrame (data, columns=['timestamp', 'id', 'source', 'course', 'currency'])
+
     print (frame)
