@@ -6,14 +6,41 @@
 #
 
 import argparse
+import hashlib
 import os.path
+import pandas as pd
 import sqlite3
+import sys
+import time
 import unittest
+
+#--------------------------------------------------------------------------
+# Base class for database entries
+#
+class Entry:
+
+    #
+    # Constructor
+    #
+    # Computes the hash value for the entry
+    #
+    def __init__ (self, timestamp, id, source):
+
+        assert isinstance (timestamp, int)
+        assert '-' not in id
+        assert '-' not in source
+
+        content = '{0}-{1}-{2}'.format (timestamp, id, source)
+
+        h = hashlib.sha256 ()
+        h.update (bytes (content, 'utf-8'))
+
+        self.hash = h.hexdigest ()
 
 #--------------------------------------------------------------------------
 # Container representing a single course entry for a single coin
 #
-class CoinCourseEntry:
+class CoinCourseEntry (Entry):
 
     #
     # Initialize entry
@@ -21,6 +48,8 @@ class CoinCourseEntry:
     # @param timestamp Event timestamp in UTC unix epoch seconds
     #
     def __init__ (self, timestamp, id, source, course, currency):
+
+        super ().__init__ (timestamp, id, source)
 
         assert isinstance (timestamp, int)
         assert isinstance (id, str)
@@ -37,6 +66,19 @@ class CoinCourseEntry:
         self.course    = course
         self.currency  = currency
 
+    #
+    # Add entry to dataframe
+    #
+    # @param frame Data frame to add entry to or 'None' if an appropriate frame should be created
+    #
+    def add_to_dataframe (self, frame):
+        if frame is None:
+            frame = pd.DataFrame (columns=['timestamp', 'id', 'source', 'course', 'currency'])
+
+        frame.loc[len (frame)] = [pd.Timestamp (time.ctime (self.timestamp)), self.id, self.source, self.course, self.currency]
+
+        return frame
+
     def __repr__ (self):
         text = 'CoinCourseEntry ('
         text += 'timestamp={0}, '.format (self.timestamp)
@@ -51,7 +93,7 @@ class CoinCourseEntry:
 #--------------------------------------------------------------------------
 # Container representing a single course entry for a single currency
 #
-class CurrencyCourseEntry:
+class CurrencyCourseEntry (Entry):
 
     #
     # Initialize entry
@@ -59,6 +101,8 @@ class CurrencyCourseEntry:
     # @param timestamp Event timestamp in UTC unix epoch seconds
     #
     def __init__ (self, timestamp, id, course):
+
+        super ().__init__ (timestamp, id, '')
 
         assert isinstance (timestamp, int)
         assert isinstance (id, str)
@@ -68,6 +112,19 @@ class CurrencyCourseEntry:
         self.timestamp = timestamp
         self.id        = id
         self.course    = course
+
+    #
+    # Add entry to dataframe
+    #
+    # @param frame Data frame to add entry to or 'None' if an appropriate frame should be created
+    #
+    def add_to_dataframe (self, frame):
+        if frame is None:
+            frame = pd.DataFrame (columns=['timestamp', 'id', 'course'])
+
+        frame.loc[len (frame)] = [pd.Timestamp (time.ctime (self.timestamp)), self.id, self.course]
+
+        return frame
 
     def __repr__ (self):
         text = 'CurrencyCourseEntry ('
@@ -82,7 +139,7 @@ class CurrencyCourseEntry:
 #--------------------------------------------------------------------------
 # Container representing a single event entry for a single news source
 #
-class NewsEntry:
+class NewsEntry (Entry):
 
     #
     # Initialize entry
@@ -90,6 +147,8 @@ class NewsEntry:
     # @param timestamp Event timestamp in UTC unix epoch seconds
     #
     def __init__ (self, timestamp, source, text):
+
+        super ().__init__ (timestamp, '', source)
 
         assert isinstance (timestamp, int)
         assert isinstance (source, str)
@@ -101,11 +160,24 @@ class NewsEntry:
         self.source = source
         self.text = text
 
-    def __repr__ (self):
-        content = self.text
+    #
+    # Add entry to dataframe
+    #
+    # @param frame Data frame to add entry to or 'None' if an appropriate frame should be created
+    #
+    def add_to_dataframe (self, frame):
+        if frame is None:
+            frame = pd.DataFrame (columns=['timestamp', 'source', 'text'])
 
-        if len (content) > 32:
-            content = content[:29] + '...'
+        frame.loc[len (frame)] = [pd.Timestamp (time.ctime (self.timestamp)), self.source, self.text]
+
+        return frame
+
+    def __repr__ (self):
+
+        content = self.text
+        if len (content) > 64:
+            content = content[:64 - 3] + '...'
 
         text = 'NewsEntry ('
         text += 'source={0}, '.format (self.source)
@@ -145,6 +217,7 @@ class Database:
         # Coin courses table
         #
         command = 'CREATE TABLE {0} ('.format (Database.COIN_COURSES_TABLE)
+        command += 'hash VARCHAR (64), '
         command += 'timestamp LONG NOT NULL, '
         command += 'id VARCHAR (3), '
         command += 'source VARCHAR (8), '
@@ -158,6 +231,7 @@ class Database:
         # Currency courses table
         #
         command = 'CREATE TABLE {0} ('.format (Database.CURRENCY_COURSES_TABLE)
+        command += 'hash VARCHAR (64), '
         command += 'timestamp LONG NOT NULL, '
         command += 'id VARCHAR (3), '
         command += 'course REAL'
@@ -169,6 +243,7 @@ class Database:
         # News event table
         #
         command = 'CREATE TABLE {0} ('.format (Database.NEWS_TABLE)
+        command += 'hash VARCHAR (64), '
         command += 'timestamp LONG NOT NULL, '
         command += 'source VARCHAR (8), '
         command += 'text MEMO'
@@ -185,10 +260,11 @@ class Database:
 
         if isinstance (entry, CoinCourseEntry):
             command = 'INSERT INTO {0} '.format (Database.COIN_COURSES_TABLE)
-            command += '(timestamp, id, source, course, currency) '
-            command += 'values (?, ?, ?, ?, ?)'
+            command += '(hash, timestamp, id, source, course, currency) '
+            command += 'values (?, ?, ?, ?, ?, ?)'
 
             params = []
+            params.append (entry.hash)
             params.append (entry.timestamp)
             params.append (entry.id)
             params.append (entry.source)
@@ -199,10 +275,11 @@ class Database:
 
         elif isinstance (entry, CurrencyCourseEntry):
             command = 'INSERT INTO {0} '.format (Database.CURRENCY_COURSES_TABLE)
-            command += '(timestamp, id, course) '
-            command += 'values (?, ?, ?)'
+            command += '(hash, timestamp, id, course) '
+            command += 'values (?, ?, ?, ?)'
 
             params = []
+            params.append (entry.hash)
             params.append (entry.timestamp)
             params.append (entry.id)
             params.append (entry.course)
@@ -211,10 +288,11 @@ class Database:
 
         elif isinstance (entry, NewsEntry):
             command = 'INSERT INTO {0} '.format (Database.NEWS_TABLE)
-            command += '(timestamp, source, text) '
-            command += 'values (?, ?, ?)'
+            command += '(hash, timestamp, source, text) '
+            command += 'values (?, ?, ?, ?)'
 
             params = []
+            params.append (entry.hash)
             params.append (entry.timestamp)
             params.append (entry.source)
             params.append (entry.text)
@@ -225,7 +303,13 @@ class Database:
             raise RuntimeError ('Unhandled database entry type')
 
     #
-    # Return list of coin course entries
+    # Commit changes to the database file
+    #
+    def commit (self):
+        self.connection.commit ()
+
+    #
+    # Return dataframe of coin course entries
     #
     def get_coin_course_entries (self):
 
@@ -234,7 +318,7 @@ class Database:
         entries = []
 
         for row in self.cursor.execute (command):
-            entries.append (CoinCourseEntry (*row))
+            entries.append (CoinCourseEntry (*row[1:]))
 
         return entries
 
@@ -248,7 +332,7 @@ class Database:
         entries = []
 
         for row in self.cursor.execute (command):
-            entries.append (CurrencyCourseEntry (*row))
+            entries.append (CurrencyCourseEntry (*row[1:]))
 
         return entries
 
@@ -262,7 +346,7 @@ class Database:
         entries = []
 
         for row in self.cursor.execute (command):
-            entries.append (NewsEntry (*row))
+            entries.append (NewsEntry (*row[1:]))
 
         return entries
 
@@ -321,18 +405,21 @@ class TestDatabase (unittest.TestCase):
 
         for a, b in zip (coin_course_entries, database_coin_course_entries):
             self.assertEqual (repr (a), repr (b))
+            self.assertEqual (a.hash, b.hash)
 
         database_currency_course_entries = database.get_currency_course_entries ()
         self.assertEqual (len (currency_course_entries), len (database_currency_course_entries))
 
         for a, b in zip (currency_course_entries, database_currency_course_entries):
             self.assertEqual (repr (a), repr (b))
+            self.assertEqual (a.hash, b.hash)
 
         database_news_entries = database.get_news_entries ()
         self.assertEqual (len (news_entries), len (database_news_entries))
 
         for a, b in zip (news_entries, database_news_entries):
             self.assertEqual (repr (a), repr (b))
+            self.assertEqual (a.hash, b.hash)
 
 
 #--------------------------------------------------------------------------
@@ -353,7 +440,6 @@ if __name__ == '__main__':
 
     assert not args.database is None
 
-    database = Database (args.database)
 
     #
     # Create and setup new database file
@@ -362,12 +448,18 @@ if __name__ == '__main__':
         if os.path.exists (args.database):
             raise RuntimeError ('Database file {0} already exists.'.format (args.database))
 
+        database = Database (args.database)
         database.create ()
+
+        sys.exit (0)
 
     #
     # List database content
     #
     if not args.list is None:
+
+        database = Database (args.database)
+
         if args.list == 'currencies':
             entries = database.get_currency_course_entries ()
         elif args.list == 'coins':
@@ -376,3 +468,11 @@ if __name__ == '__main__':
             entries = database.get_news_entries ()
         else:
             raise RuntimeError ('Illegal database table name \'{0}\''.format (args.list))
+
+        frame = None
+        for entry in entries:
+            frame = entry.add_to_dataframe (frame)
+
+        print (frame)
+
+        sys.exit (0)

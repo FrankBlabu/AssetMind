@@ -4,6 +4,8 @@
 #
 # Frank Blankenburg, Jun. 2017
 #
+# For the GDAX API python wrapper see https://github.com/danpaquin/GDAX-Python
+#
 
 import argparse
 import GDAX
@@ -23,25 +25,44 @@ class GDAXScraper:
     def __init__ (self):
         pass
 
-    def execute (self, database, start=None, end=None):
+    def execute (self, database, args):
 
         client = GDAX.PublicClient ()
 
-        start = time.strftime ('%Y-%m-%d', start) if not start is None else ''
-        end   = time.strftime ('%Y-%m-%d', end  ) if not end   is None else ''
+        start = time.strftime ('%Y-%m-%d', args.start) if not args.start is None else ''
+        end   = time.strftime ('%Y-%m-%d', args.end  ) if not args.end   is None else ''
 
         #
         # Each entry has the format (time, low, high, open, close, volume)
         # Time is in unix epoch format
         #
+        entries = []
+
         for rate in client.getProductHistoricRates (product='ETH-USD', granularity=60*60*24, start=start, end=end):
-            database.add (CoinCourseEntry (rate[0] + time.timezone, 'eth', 'gdax', (rate[1] + rate[2]) / 2, 'usd'))
+            entries.append (CoinCourseEntry (rate[0] + time.timezone, 'eth', 'gdax', (rate[1] + rate[2]) / 2, 'usd'))
 
         for rate in client.getProductHistoricRates (product='BTC-USD', granularity=60*60*24, start=start, end=end):
-            database.add (CoinCourseEntry (rate[0] + time.timezone, 'btc', 'gdax', (rate[1] + rate[2]) / 2, 'usd'))
+            entries.append (CoinCourseEntry (rate[0] + time.timezone, 'btc', 'gdax', (rate[1] + rate[2]) / 2, 'usd'))
 
         for rate in client.getProductHistoricRates (product='LTC-USD', granularity=60*60*24, start=start, end=end):
-            database.add (CoinCourseEntry (rate[0] + time.timezone, 'ltc', 'gdax', (rate[1] + rate[2]) / 2, 'usd'))
+            entries.append (CoinCourseEntry (rate[0] + time.timezone, 'ltc', 'gdax', (rate[1] + rate[2]) / 2, 'usd'))
+
+        for entry in entries:
+            database.add (entry)
+
+        database.commit ()
+
+        if args.verbose:
+
+            frame = None
+            for entry in entries:
+                frame = entry.add_to_dataframe (frame)
+
+            print ('Scraped coin courses:')
+            print ('---------------------')
+
+            print (frame)
+
 
 #--------------------------------------------------------------------------
 # Unittests
@@ -67,33 +88,17 @@ if __name__ == '__main__':
     # Parse command line arguments
     #
     parser = argparse.ArgumentParser ()
-    parser.add_argument ('-s', '--startdate', required=False, type=to_date, help='Start date (YYYY-MM-DD)')
-    parser.add_argument ('-e', '--enddate',   required=False, type=to_date, help='End date (YYYY-MM-DD)')
-    parser.add_argument ('-d', '--database',  required=False, type=str, default=':memory:', help='Database file')
+    parser.add_argument ('-s', '--start',    required=False, type=to_date, help='Start date (YYYY-MM-DD)')
+    parser.add_argument ('-e', '--end',      required=False, type=to_date, help='End date (YYYY-MM-DD)')
+    parser.add_argument ('-d', '--database', required=False, type=str, default=':memory:', help='Database file')
+    parser.add_argument ('-v', '--verbose',  action='store_true', default=False, help='Verbose output')
 
     args = parser.parse_args ()
 
     database = Database (args.database)
-    database.create ()
+
+    if args.database == ':memory:':
+        database.create ()
 
     scraper = GDAXScraper ()
-    scraper.execute (database, start=args.startdate, end=args.enddate)
-
-    entries = database.get_coin_course_entries ()
-
-    data = {'timestamp': [],
-            'id': [],
-            'source': [],
-            'course': [],
-            'currency': []}
-
-    for entry in entries:
-        data['timestamp'].append (pd.Timestamp (time.ctime (entry.timestamp)))
-        data['id'].append (entry.id)
-        data['source'].append (entry.source)
-        data['course'].append (entry.course)
-        data['currency'].append (entry.currency)
-
-    frame = pd.DataFrame (data, columns=['timestamp', 'id', 'source', 'course', 'currency'])
-
-    print (frame)
+    scraper.execute (database, args)
