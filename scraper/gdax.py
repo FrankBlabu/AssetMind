@@ -9,8 +9,6 @@
 
 import argparse
 import GDAX
-import pandas as pd
-import sys
 import time
 import unittest
 
@@ -29,8 +27,8 @@ class GDAXScraper:
 
         client = GDAX.PublicClient ()
 
-        start = time.strftime ('%Y-%m-%d', args.start) if not args.start is None else ''
-        end   = time.strftime ('%Y-%m-%d', args.end  ) if not args.end   is None else ''
+        start = time.strftime ('%Y-%m-%d', args.start) if args.start is not None else ''
+        end   = time.strftime ('%Y-%m-%d', args.end  ) if args.end   is not None else ''
 
         #
         # Each entry has the format (time, low, high, open, close, volume)
@@ -38,13 +36,13 @@ class GDAXScraper:
         #
         entries = []
 
-        for rate in client.getProductHistoricRates (product='ETH-USD', granularity=60*60*24, start=start, end=end):
+        for rate in client.getProductHistoricRates (product='ETH-USD', granularity=60 * 60 * 24, start=start, end=end):
             entries.append (CoinCourseEntry (rate[0] + time.timezone, 'eth', 'gdax', (rate[1] + rate[2]) / 2, 'usd'))
 
-        for rate in client.getProductHistoricRates (product='BTC-USD', granularity=60*60*24, start=start, end=end):
+        for rate in client.getProductHistoricRates (product='BTC-USD', granularity=60 * 60 * 24, start=start, end=end):
             entries.append (CoinCourseEntry (rate[0] + time.timezone, 'btc', 'gdax', (rate[1] + rate[2]) / 2, 'usd'))
 
-        for rate in client.getProductHistoricRates (product='LTC-USD', granularity=60*60*24, start=start, end=end):
+        for rate in client.getProductHistoricRates (product='LTC-USD', granularity=60 * 60 * 24, start=start, end=end):
             entries.append (CoinCourseEntry (rate[0] + time.timezone, 'ltc', 'gdax', (rate[1] + rate[2]) / 2, 'usd'))
 
         for entry in entries:

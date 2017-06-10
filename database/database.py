@@ -42,6 +42,8 @@ class Entry:
 #
 class CoinCourseEntry (Entry):
 
+    TABLE = 'coin_courses_table'
+
     #
     # Initialize entry
     #
@@ -65,6 +67,44 @@ class CoinCourseEntry (Entry):
         self.source    = source
         self.course    = course
         self.currency  = currency
+
+    #
+    # Add matching table to database
+    #
+    @staticmethod
+    def add_table_to_database (cursor):
+
+        #
+        # Coin courses table
+        #
+        command = 'CREATE TABLE {0} ('.format (CoinCourseEntry.TABLE)
+        command += 'hash VARCHAR (64), '
+        command += 'timestamp LONG NOT NULL, '
+        command += 'id VARCHAR (3), '
+        command += 'source VARCHAR (8), '
+        command += 'course REAL, '
+        command += 'currency VARCHAR (3)'
+        command += ')'
+
+        cursor.execute (command)
+
+    #
+    # Insert this entry into a database
+    #
+    def insert_into_database (self, cursor):
+        command = 'INSERT INTO {0} '.format (CoinCourseEntry.TABLE)
+        command += '(hash, timestamp, id, source, course, currency) '
+        command += 'values (?, ?, ?, ?, ?, ?)'
+
+        params = []
+        params.append (self.hash)
+        params.append (self.timestamp)
+        params.append (self.id)
+        params.append (self.source)
+        params.append (self.course)
+        params.append (self.currency)
+
+        cursor.execute (command, params)
 
     #
     # Add entry to dataframe
@@ -95,6 +135,8 @@ class CoinCourseEntry (Entry):
 #
 class CurrencyCourseEntry (Entry):
 
+    TABLE = 'currency_courses_table'
+
     #
     # Initialize entry
     #
@@ -112,6 +154,37 @@ class CurrencyCourseEntry (Entry):
         self.timestamp = timestamp
         self.id        = id
         self.course    = course
+
+    #
+    # Add matching table to database
+    #
+    @staticmethod
+    def add_table_to_database (cursor):
+
+        command = 'CREATE TABLE {0} ('.format (CurrencyCourseEntry.TABLE)
+        command += 'hash VARCHAR (64), '
+        command += 'timestamp LONG NOT NULL, '
+        command += 'id VARCHAR (3), '
+        command += 'course REAL'
+        command += ')'
+
+        cursor.execute (command)
+
+    #
+    # Insert this entry into a database
+    #
+    def insert_into_database (self, cursor):
+        command = 'INSERT INTO {0} '.format (CurrencyCourseEntry.TABLE)
+        command += '(hash, timestamp, id, course) '
+        command += 'values (?, ?, ?, ?)'
+
+        params = []
+        params.append (self.hash)
+        params.append (self.timestamp)
+        params.append (self.id)
+        params.append (self.course)
+
+        cursor.execute (command, params)
 
     #
     # Add entry to dataframe
@@ -137,9 +210,89 @@ class CurrencyCourseEntry (Entry):
 
 
 #--------------------------------------------------------------------------
+# Container representing a single course entry for a single stock or index
+#
+class StockCourseEntry (Entry):
+
+    TABLE = 'stock_courses_table'
+
+    #
+    # Initialize entry
+    #
+    # @param timestamp Event timestamp in UTC unix epoch seconds
+    #
+    def __init__ (self, timestamp, id, course):
+
+        super ().__init__ (timestamp, id, '')
+
+        assert isinstance (timestamp, int)
+        assert isinstance (id, str)
+        assert isinstance (course, float)
+
+        self.timestamp = timestamp
+        self.id        = id
+        self.course    = course
+
+    #
+    # Add matching table to database
+    #
+    @staticmethod
+    def add_table_to_database (cursor):
+
+        command = 'CREATE TABLE {0} ('.format (StockCourseEntry.TABLE)
+        command += 'hash VARCHAR (64), '
+        command += 'timestamp LONG NOT NULL, '
+        command += 'id VARCHAR (3), '
+        command += 'course REAL'
+        command += ')'
+
+        cursor.execute (command)
+
+    #
+    # Insert this entry into a database
+    #
+    def insert_into_database (self, cursor):
+        command = 'INSERT INTO {0} '.format (StockCourseEntry.TABLE)
+        command += '(hash, timestamp, id, course) '
+        command += 'values (?, ?, ?, ?)'
+
+        params = []
+        params.append (self.hash)
+        params.append (self.timestamp)
+        params.append (self.id)
+        params.append (self.course)
+
+        cursor.execute (command, params)
+
+    #
+    # Add entry to dataframe
+    #
+    # @param frame Data frame to add entry to or 'None' if an appropriate frame should be created
+    #
+    def add_to_dataframe (self, frame):
+        if frame is None:
+            frame = pd.DataFrame (columns=['timestamp', 'id', 'course'])
+
+        frame.loc[len (frame)] = [pd.Timestamp (time.ctime (self.timestamp)), self.id, self.course]
+
+        return frame
+
+    def __repr__ (self):
+        text = 'StockCourseEntry ('
+        text += 'timestamp={0}, '.format (self.timestamp)
+        text += 'id={0}, '.format (self.id)
+        text += 'course={0}'.format (self.course)
+        text += ')'
+
+        return text
+
+
+#--------------------------------------------------------------------------
 # Container representing a single event entry for a single news source
 #
 class NewsEntry (Entry):
+
+    TABLE = 'news_courses_table'
 
     #
     # Initialize entry
@@ -159,6 +312,36 @@ class NewsEntry (Entry):
         self.timestamp = timestamp
         self.source = source
         self.text = text
+
+    #
+    # Add matching table to database
+    #
+    @staticmethod
+    def add_table_to_database (cursor):
+        command = 'CREATE TABLE {0} ('.format (NewsEntry.TABLE)
+        command += 'hash VARCHAR (64), '
+        command += 'timestamp LONG NOT NULL, '
+        command += 'source VARCHAR (8), '
+        command += 'text MEMO'
+        command += ')'
+
+        cursor.execute (command)
+
+    #
+    # Insert this entry into a database
+    #
+    def insert_into_database (self, cursor):
+        command = 'INSERT INTO {0} '.format (NewsEntry.TABLE)
+        command += '(hash, timestamp, source, text) '
+        command += 'values (?, ?, ?, ?)'
+
+        params = []
+        params.append (self.hash)
+        params.append (self.timestamp)
+        params.append (self.source)
+        params.append (self.text)
+
+        cursor.execute (command, params)
 
     #
     # Add entry to dataframe
@@ -196,6 +379,7 @@ class Database:
     #
     COIN_COURSES_TABLE     = 'coin_courses'
     CURRENCY_COURSES_TABLE = 'currency_courses'
+    STOCK_COURSES_TABLE    = 'stock_courses'
     NEWS_TABLE             = 'news'
 
     #
@@ -213,43 +397,10 @@ class Database:
     #
     def create (self):
 
-        #
-        # Coin courses table
-        #
-        command = 'CREATE TABLE {0} ('.format (Database.COIN_COURSES_TABLE)
-        command += 'hash VARCHAR (64), '
-        command += 'timestamp LONG NOT NULL, '
-        command += 'id VARCHAR (3), '
-        command += 'source VARCHAR (8), '
-        command += 'course REAL, '
-        command += 'currency VARCHAR (3)'
-        command += ')'
-
-        self.cursor.execute (command)
-
-        #
-        # Currency courses table
-        #
-        command = 'CREATE TABLE {0} ('.format (Database.CURRENCY_COURSES_TABLE)
-        command += 'hash VARCHAR (64), '
-        command += 'timestamp LONG NOT NULL, '
-        command += 'id VARCHAR (3), '
-        command += 'course REAL'
-        command += ')'
-
-        self.cursor.execute (command)
-
-        #
-        # News event table
-        #
-        command = 'CREATE TABLE {0} ('.format (Database.NEWS_TABLE)
-        command += 'hash VARCHAR (64), '
-        command += 'timestamp LONG NOT NULL, '
-        command += 'source VARCHAR (8), '
-        command += 'text MEMO'
-        command += ')'
-
-        self.cursor.execute (command)
+        CoinCourseEntry.add_table_to_database (self.cursor)
+        CurrencyCourseEntry.add_table_to_database (self.cursor)
+        StockCourseEntry.add_table_to_database (self.cursor)
+        NewsEntry.add_table_to_database (self.cursor)
 
     #
     # Add entry to the database
@@ -257,50 +408,7 @@ class Database:
     # @param entry Entry to be added. The type distinguishes about the location.
     #
     def add (self, entry):
-
-        if isinstance (entry, CoinCourseEntry):
-            command = 'INSERT INTO {0} '.format (Database.COIN_COURSES_TABLE)
-            command += '(hash, timestamp, id, source, course, currency) '
-            command += 'values (?, ?, ?, ?, ?, ?)'
-
-            params = []
-            params.append (entry.hash)
-            params.append (entry.timestamp)
-            params.append (entry.id)
-            params.append (entry.source)
-            params.append (entry.course)
-            params.append (entry.currency)
-
-            self.cursor.execute (command, params)
-
-        elif isinstance (entry, CurrencyCourseEntry):
-            command = 'INSERT INTO {0} '.format (Database.CURRENCY_COURSES_TABLE)
-            command += '(hash, timestamp, id, course) '
-            command += 'values (?, ?, ?, ?)'
-
-            params = []
-            params.append (entry.hash)
-            params.append (entry.timestamp)
-            params.append (entry.id)
-            params.append (entry.course)
-
-            self.cursor.execute (command, params)
-
-        elif isinstance (entry, NewsEntry):
-            command = 'INSERT INTO {0} '.format (Database.NEWS_TABLE)
-            command += '(hash, timestamp, source, text) '
-            command += 'values (?, ?, ?, ?)'
-
-            params = []
-            params.append (entry.hash)
-            params.append (entry.timestamp)
-            params.append (entry.source)
-            params.append (entry.text)
-
-            self.cursor.execute (command, params)
-
-        else:
-            raise RuntimeError ('Unhandled database entry type')
+        entry.insert_into_database (self.cursor)
 
     #
     # Commit changes to the database file
@@ -313,7 +421,7 @@ class Database:
     #
     def get_coin_course_entries (self):
 
-        command = 'SELECT * FROM {0}'.format (Database.COIN_COURSES_TABLE)
+        command = 'SELECT * FROM {0}'.format (CoinCourseEntry.TABLE)
 
         entries = []
 
@@ -327,7 +435,7 @@ class Database:
     #
     def get_currency_course_entries (self):
 
-        command = 'SELECT * FROM {0}'.format (Database.CURRENCY_COURSES_TABLE)
+        command = 'SELECT * FROM {0}'.format (CurrencyCourseEntry.TABLE)
 
         entries = []
 
@@ -337,11 +445,25 @@ class Database:
         return entries
 
     #
+    # Return list of stock course entries
+    #
+    def get_stock_course_entries (self):
+
+        command = 'SELECT * FROM {0}'.format (StockCourseEntry.TABLE)
+
+        entries = []
+
+        for row in self.cursor.execute (command):
+            entries.append (StockCourseEntry (*row[1:]))
+
+        return entries
+
+    #
     # Return list of news entries
     #
     def get_news_entries (self):
 
-        command = 'SELECT * FROM {0}'.format (Database.NEWS_TABLE)
+        command = 'SELECT * FROM {0}'.format (NewsEntry.TABLE)
 
         entries = []
 
@@ -433,12 +555,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser ()
 
     parser.add_argument ('-c', '--create', action='store_true', default=False, help='Create new database')
-    parser.add_argument ('-l', '--list',   action='store', choices=['currencies', 'coins', 'news'], help='List database content')
+    parser.add_argument ('-l', '--list',   action='store', choices=['currencies', 'coins', 'stock', 'news'], help='List database content')
     parser.add_argument ('database',       type=str, default=None, help='Database file')
 
     args = parser.parse_args ()
 
-    assert not args.database is None
+    assert args.database is not None
 
 
     #
@@ -456,7 +578,7 @@ if __name__ == '__main__':
     #
     # List database content
     #
-    if not args.list is None:
+    if args.list is not None:
 
         database = Database (args.database)
 
@@ -464,10 +586,14 @@ if __name__ == '__main__':
             entries = database.get_currency_course_entries ()
         elif args.list == 'coins':
             entries = database.get_coin_course_entries ()
+        elif args.list == 'stock':
+            entries = database.get_stock_course_entries ()
         elif args.list == 'news':
             entries = database.get_news_entries ()
         else:
             raise RuntimeError ('Illegal database table name \'{0}\''.format (args.list))
+
+        pd.set_option ('display.width', 256)
 
         frame = None
         for entry in entries:
