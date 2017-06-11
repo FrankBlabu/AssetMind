@@ -17,6 +17,11 @@ import unittest
 #--------------------------------------------------------------------------
 # Base class for database entries
 #
+# This class cares for computing a unique hash value for each entry which
+# is used to determine if this special entry is already present in the
+# database. This way the same source of information can be read and inserted
+# multiple times without leading to duplicate database entries.
+#
 class Entry:
 
     #
@@ -36,6 +41,7 @@ class Entry:
         h.update (bytes (content, 'utf-8'))
 
         self.hash = h.hexdigest ()
+
 
 #--------------------------------------------------------------------------
 # Container representing a single course entry for a single coin
@@ -375,14 +381,6 @@ class NewsEntry (Entry):
 class Database:
 
     #
-    # Identifier for the database tables
-    #
-    COIN_COURSES_TABLE     = 'coin_courses'
-    CURRENCY_COURSES_TABLE = 'currency_courses'
-    STOCK_COURSES_TABLE    = 'stock_courses'
-    NEWS_TABLE             = 'news'
-
-    #
     # Constructor
     #
     # @param file Location of the database in the file system
@@ -405,9 +403,18 @@ class Database:
     #
     # Add entry to the database
     #
-    # @param entry Entry to be added. The type distinguishes about the location.
+    # If an entry with the same hash is already existing in the database, it will
+    # be replaced by the new entry. So it is assumed that data added later is
+    # 'more correct' or generally of a higher quality.
+    #
+    # @param entry Entry to be added
     #
     def add (self, entry):
+
+
+        command = 'DELETE FROM {table} WHERE hash="{hash}"'.format (table=entry.TABLE, hash=entry.hash)
+        self.cursor.execute (command)
+
         entry.insert_into_database (self.cursor)
 
     #
@@ -509,6 +516,17 @@ class TestDatabase (unittest.TestCase):
             database.add (entry)
 
         #
+        # Setup some stock course entries
+        #
+        stock_course_entries = []
+        stock_course_entries.append (StockCourseEntry (1234, 'gdax',   230.0))
+        stock_course_entries.append (StockCourseEntry (1239, 'nasdaq', 2200.12))
+        stock_course_entries.append (StockCourseEntry (1418, 'gdax',   240.0))
+
+        for entry in stock_course_entries:
+            database.add (entry)
+
+        #
         # Setup some news entries
         #
         news_entries = []
@@ -533,6 +551,13 @@ class TestDatabase (unittest.TestCase):
         self.assertEqual (len (currency_course_entries), len (database_currency_course_entries))
 
         for a, b in zip (currency_course_entries, database_currency_course_entries):
+            self.assertEqual (repr (a), repr (b))
+            self.assertEqual (a.hash, b.hash)
+
+        database_stock_course_entries = database.get_stock_course_entries ()
+        self.assertEqual (len (stock_course_entries), len (database_stock_course_entries))
+
+        for a, b in zip (stock_course_entries, database_stock_course_entries):
             self.assertEqual (repr (a), repr (b))
             self.assertEqual (a.hash, b.hash)
 
@@ -599,6 +624,7 @@ if __name__ == '__main__':
         for entry in entries:
             frame = entry.add_to_dataframe (frame)
 
+        pd.set_option ('display.max_rows', len (frame))
         print (frame)
 
         sys.exit (0)
