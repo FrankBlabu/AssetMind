@@ -1,8 +1,8 @@
 #!/usr/bin/python3
 #
-# index_csv.py - Import stock index files in CSV format
+# gold_csv.py - Import gold price in CSV format
 #
-# Obtained from: https://finance.yahoo.com/quote/%5EGDAXI/history?p=%5EGDAXI
+# Gold price obtained from: http://data.okfn.org/data/core/gold-prices#data
 #
 
 import argparse
@@ -52,8 +52,7 @@ if __name__ == '__main__':
     for i in range (len (data)):
         row = data.ix[i]
 
-        if row['Low'] != 'null' and row['High'] != 'null':
-            entry = StockCourseEntry (to_date (row['Date']), args.id.lower (), (float (row['High']) + float (row['Low'])) / 2)
-            database.add (entry)
+        entry = StockCourseEntry (to_date (row['date']), args.id.lower (), float (row['price']))
+        database.add (entry)
 
     database.commit ()

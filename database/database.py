@@ -618,12 +618,11 @@ if __name__ == '__main__':
         else:
             raise RuntimeError ('Illegal database table name \'{0}\''.format (args.list))
 
-        pd.set_option ('display.width', 256)
-
         frame = None
         for entry in entries:
             frame = entry.add_to_dataframe (frame)
 
+        pd.set_option ('display.width', 256)
         pd.set_option ('display.max_rows', len (frame))
         print (frame)
 
