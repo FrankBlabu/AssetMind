@@ -32,15 +32,23 @@ class Entry:
     def __init__ (self, timestamp, id, source):
 
         assert isinstance (timestamp, int)
+        assert isinstance (id, str)
+        assert isinstance (source, str) or source is None
         assert '-' not in id
         assert '-' not in source
 
-        content = '{0}-{1}-{2}'.format (timestamp, id, source)
+        if source is not None:
+            content = '{0}-{1}-{2}'.format (timestamp, id, source)
+        else:
+            content = '{0}-{1}'.format (timestamp, id)
 
         h = hashlib.sha256 ()
         h.update (bytes (content, 'utf-8'))
 
         self.hash = h.hexdigest ()
+        self.timestamp = timestamp
+        self.id = id
+        self.source = source
 
 
 #--------------------------------------------------------------------------
@@ -48,7 +56,7 @@ class Entry:
 #
 class CoinEntry (Entry):
 
-    ID = 'coin_table'
+    ID = 'coin'
 
     #
     # Initialize entry
@@ -59,18 +67,12 @@ class CoinEntry (Entry):
 
         super ().__init__ (timestamp, id, source)
 
-        assert isinstance (timestamp, int)
-        assert isinstance (id, str)
         assert len (id) == 3
-        assert isinstance (source, str)
         assert len (source) <= 8
         assert isinstance (course, float)
         assert isinstance (currency, str)
         assert len (currency) == 3
 
-        self.timestamp = timestamp
-        self.id        = id
-        self.source    = source
         self.course    = course
         self.currency  = currency
 
@@ -141,7 +143,7 @@ class CoinEntry (Entry):
 #
 class CurrencyEntry (Entry):
 
-    ID = 'currency_table'
+    ID = 'currency'
 
     #
     # Initialize entry
@@ -150,15 +152,11 @@ class CurrencyEntry (Entry):
     #
     def __init__ (self, timestamp, id, course):
 
-        super ().__init__ (timestamp, id, '')
+        super ().__init__ (timestamp, id, None)
 
-        assert isinstance (timestamp, int)
-        assert isinstance (id, str)
         assert len (id) == 3
         assert isinstance (course, float)
 
-        self.timestamp = timestamp
-        self.id        = id
         self.course    = course
 
     #
@@ -220,7 +218,7 @@ class CurrencyEntry (Entry):
 #
 class StockEntry (Entry):
 
-    ID = 'stock_table'
+    ID = 'stock'
 
     #
     # Initialize entry
@@ -229,14 +227,10 @@ class StockEntry (Entry):
     #
     def __init__ (self, timestamp, id, course):
 
-        super ().__init__ (timestamp, id, '')
+        super ().__init__ (timestamp, id, None)
 
-        assert isinstance (timestamp, int)
-        assert isinstance (id, str)
         assert isinstance (course, float)
 
-        self.timestamp = timestamp
-        self.id        = id
         self.course    = course
 
     #
@@ -298,25 +292,21 @@ class StockEntry (Entry):
 #
 class NewsEntry (Entry):
 
-    ID = 'news_courses_table'
+    ID = 'news'
 
     #
     # Initialize entry
     #
     # @param timestamp Event timestamp in UTC unix epoch seconds
     #
-    def __init__ (self, timestamp, source, text):
+    def __init__ (self, timestamp, id, text):
 
-        super ().__init__ (timestamp, '', source)
+        super ().__init__ (timestamp, id, None)
 
-        assert isinstance (timestamp, int)
-        assert isinstance (source, str)
-        assert len (source) <= 8
+        assert len (id) <= 8
         assert isinstance (text, str)
         assert len (text) < (1 << 16)
 
-        self.timestamp = timestamp
-        self.source = source
         self.text = text
 
     #
@@ -327,7 +317,7 @@ class NewsEntry (Entry):
         command = 'CREATE TABLE {0} ('.format (NewsEntry.ID)
         command += 'hash VARCHAR (64), '
         command += 'timestamp LONG NOT NULL, '
-        command += 'source VARCHAR (8), '
+        command += 'id VARCHAR (8), '
         command += 'text MEMO'
         command += ')'
 
@@ -338,13 +328,13 @@ class NewsEntry (Entry):
     #
     def insert_into_database (self, cursor):
         command = 'INSERT INTO {0} '.format (NewsEntry.ID)
-        command += '(hash, timestamp, source, text) '
+        command += '(hash, timestamp, id, text) '
         command += 'values (?, ?, ?, ?)'
 
         params = []
         params.append (self.hash)
         params.append (self.timestamp)
-        params.append (self.source)
+        params.append (self.id)
         params.append (self.text)
 
         cursor.execute (command, params)
@@ -356,9 +346,9 @@ class NewsEntry (Entry):
     #
     def add_to_dataframe (self, frame):
         if frame is None:
-            frame = pd.DataFrame (columns=['timestamp', 'source', 'text'])
+            frame = pd.DataFrame (columns=['timestamp', 'id', 'text'])
 
-        frame.loc[len (frame)] = [pd.Timestamp (time.ctime (self.timestamp)), self.source, self.text]
+        frame.loc[len (frame)] = [pd.Timestamp (time.ctime (self.timestamp)), self.id, self.text]
 
         return frame
 
@@ -369,7 +359,8 @@ class NewsEntry (Entry):
             content = content[:64 - 3] + '...'
 
         text = 'NewsEntry ('
-        text += 'source={0}, '.format (self.source)
+        text += 'timestamp={0}, '.format (self.timestamp)
+        text += 'id={0}, '.format (self.id)
         text += 'text=\'{0}\''.format (content)
         text += ')'
 
@@ -556,30 +547,60 @@ def database_create (args):
 def database_list_table (args):
     database = Database (args.database)
 
-    if args.list == 'currencies':
-        entries = database.get_entries (CurrencyEntry.ID)
-    elif args.list == 'coins':
-        entries = database.get_entries (CoinEntry.ID)
-    elif args.list == 'stock':
-        entries = database.get_entries (StockEntry.ID)
-    elif args.list == 'news':
-        entries = database.get_entries (NewsEntry.ID)
-    else:
-        raise RuntimeError ('Illegal database table name \'{0}\''.format (args.list))
+    def print_as_frame (title, entries):
 
-    frame = None
-    for entry in entries:
-        frame = entry.add_to_dataframe (frame)
+        frame = None
+        for entry in entries:
+            frame = entry.add_to_dataframe (frame)
 
-    pd.set_option ('display.width', 256)
-    pd.set_option ('display.max_rows', len (frame))
-    print (frame)
+        if frame is not None:
+            pd.set_option ('display.width', 256)
+            pd.set_option ('display.max_rows', len (frame))
+
+            print (title)
+            print ('-' * len (title))
+            print (frame)
+
+    if args.list == 'currencies' or args.list == 'all':
+        print_as_frame ('Currencies', database.get_entries (CurrencyEntry.ID))
+    if args.list == 'coins' or args.list == 'all':
+        print_as_frame ('Coins', database.get_entries (CoinEntry.ID))
+    if args.list == 'stock' or args.list == 'all':
+        print_as_frame ('Stock', database.get_entries (StockEntry.ID))
+    if args.list == 'news' or args.list == 'all':
+        print_as_frame ('News', database.get_entries (NewsEntry.ID))
 
 #
 # Print database summary
 #
 def database_summary (args):
-    pass
+
+    database = Database (args.database)
+
+    def to_time (timestamp):
+        return pd.Timestamp (time.strftime ('%Y-%m-%d', time.localtime (timestamp)))
+
+    def add_to_frame (name, entry_id):
+        entries = database.get_entries (entry_id)
+        ids = set (map (lambda entry: entry.id, entries))
+
+        for id in ids:
+            id_entries = [e for e in entries if e.id == id]
+            times = [t.timestamp for t in id_entries]
+
+            frame.loc[len (frame)] = [name, id, len (id_entries),
+                                      pd.Timestamp (to_time (min (times))),
+                                      pd.Timestamp (to_time (max (times)))]
+
+    frame = pd.DataFrame (columns=['type', 'id', 'entries', 'start date', 'end date'])
+
+    add_to_frame ('coin', CoinEntry.ID)
+    add_to_frame ('currency', CurrencyEntry.ID)
+    add_to_frame ('stock', StockEntry.ID)
+    add_to_frame ('news', NewsEntry.ID)
+
+    print (frame)
+
 
 #--------------------------------------------------------------------------
 # MAIN
@@ -592,7 +613,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser ()
 
     parser.add_argument ('-c', '--create',  action='store_true', default=False, help='Create new database')
-    parser.add_argument ('-l', '--list',    action='store', choices=['currencies', 'coins', 'stock', 'news'], help='List database content')
+    parser.add_argument ('-l', '--list',    action='store', choices=['currencies', 'coins', 'stock', 'news', 'all'], help='List database content')
     parser.add_argument ('-s', '--summary', action='store_true', default=False, help='Print database summary')
     parser.add_argument ('database',        type=str, default=None, help='Database file')
 
