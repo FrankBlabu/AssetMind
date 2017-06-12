@@ -13,7 +13,7 @@ import time
 import unittest
 
 from database.database import Database
-from database.database import CoinCourseEntry
+from database.database import CoinEntry
 
 #--------------------------------------------------------------------------
 # Scraper adding data extracted from GDAX to the database
@@ -37,13 +37,13 @@ class GDAXScraper:
         entries = []
 
         for rate in client.getProductHistoricRates (product='ETH-USD', granularity=60 * 60 * 24, start=start, end=end):
-            entries.append (CoinCourseEntry (rate[0] + time.timezone, 'eth', 'gdax', (rate[1] + rate[2]) / 2, 'usd'))
+            entries.append (CoinEntry (rate[0] + time.timezone, 'eth', 'gdax', (rate[1] + rate[2]) / 2, 'usd'))
 
         for rate in client.getProductHistoricRates (product='BTC-USD', granularity=60 * 60 * 24, start=start, end=end):
-            entries.append (CoinCourseEntry (rate[0] + time.timezone, 'btc', 'gdax', (rate[1] + rate[2]) / 2, 'usd'))
+            entries.append (CoinEntry (rate[0] + time.timezone, 'btc', 'gdax', (rate[1] + rate[2]) / 2, 'usd'))
 
         for rate in client.getProductHistoricRates (product='LTC-USD', granularity=60 * 60 * 24, start=start, end=end):
-            entries.append (CoinCourseEntry (rate[0] + time.timezone, 'ltc', 'gdax', (rate[1] + rate[2]) / 2, 'usd'))
+            entries.append (CoinEntry (rate[0] + time.timezone, 'ltc', 'gdax', (rate[1] + rate[2]) / 2, 'usd'))
 
         for entry in entries:
             database.add (entry)

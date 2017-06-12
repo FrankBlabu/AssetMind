@@ -10,7 +10,7 @@ import pandas as pd
 import time
 
 from database.database import Database
-from database.database import StockCourseEntry
+from database.database import StockEntry
 
 #--------------------------------------------------------------------------
 # Local functions
@@ -52,7 +52,7 @@ if __name__ == '__main__':
     for i in range (len (data)):
         row = data.ix[i]
 
-        entry = StockCourseEntry (to_date (row['date']), args.id.lower (), float (row['price']))
+        entry = StockEntry (to_date (row['date']), args.id.lower (), float (row['price']))
         database.add (entry)
 
     database.commit ()

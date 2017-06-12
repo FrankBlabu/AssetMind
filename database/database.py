@@ -46,9 +46,9 @@ class Entry:
 #--------------------------------------------------------------------------
 # Container representing a single course entry for a single coin
 #
-class CoinCourseEntry (Entry):
+class CoinEntry (Entry):
 
-    TABLE = 'coin_courses_table'
+    ID = 'coin_table'
 
     #
     # Initialize entry
@@ -83,7 +83,7 @@ class CoinCourseEntry (Entry):
         #
         # Coin courses table
         #
-        command = 'CREATE TABLE {0} ('.format (CoinCourseEntry.TABLE)
+        command = 'CREATE TABLE {0} ('.format (CoinEntry.ID)
         command += 'hash VARCHAR (64), '
         command += 'timestamp LONG NOT NULL, '
         command += 'id VARCHAR (3), '
@@ -98,7 +98,7 @@ class CoinCourseEntry (Entry):
     # Insert this entry into a database
     #
     def insert_into_database (self, cursor):
-        command = 'INSERT INTO {0} '.format (CoinCourseEntry.TABLE)
+        command = 'INSERT INTO {0} '.format (CoinEntry.ID)
         command += '(hash, timestamp, id, source, course, currency) '
         command += 'values (?, ?, ?, ?, ?, ?)'
 
@@ -126,7 +126,7 @@ class CoinCourseEntry (Entry):
         return frame
 
     def __repr__ (self):
-        text = 'CoinCourseEntry ('
+        text = 'CoinEntry ('
         text += 'timestamp={0}, '.format (self.timestamp)
         text += 'id={0}, '.format (self.id)
         text += 'source={0}, '.format (self.source)
@@ -139,9 +139,9 @@ class CoinCourseEntry (Entry):
 #--------------------------------------------------------------------------
 # Container representing a single course entry for a single currency
 #
-class CurrencyCourseEntry (Entry):
+class CurrencyEntry (Entry):
 
-    TABLE = 'currency_courses_table'
+    ID = 'currency_table'
 
     #
     # Initialize entry
@@ -167,7 +167,7 @@ class CurrencyCourseEntry (Entry):
     @staticmethod
     def add_table_to_database (cursor):
 
-        command = 'CREATE TABLE {0} ('.format (CurrencyCourseEntry.TABLE)
+        command = 'CREATE TABLE {0} ('.format (CurrencyEntry.ID)
         command += 'hash VARCHAR (64), '
         command += 'timestamp LONG NOT NULL, '
         command += 'id VARCHAR (3), '
@@ -180,7 +180,7 @@ class CurrencyCourseEntry (Entry):
     # Insert this entry into a database
     #
     def insert_into_database (self, cursor):
-        command = 'INSERT INTO {0} '.format (CurrencyCourseEntry.TABLE)
+        command = 'INSERT INTO {0} '.format (CurrencyEntry.ID)
         command += '(hash, timestamp, id, course) '
         command += 'values (?, ?, ?, ?)'
 
@@ -206,7 +206,7 @@ class CurrencyCourseEntry (Entry):
         return frame
 
     def __repr__ (self):
-        text = 'CurrencyCourseEntry ('
+        text = 'CurrencyEntry ('
         text += 'timestamp={0}, '.format (self.timestamp)
         text += 'id={0}, '.format (self.id)
         text += 'course={0}'.format (self.course)
@@ -218,9 +218,9 @@ class CurrencyCourseEntry (Entry):
 #--------------------------------------------------------------------------
 # Container representing a single course entry for a single stock or index
 #
-class StockCourseEntry (Entry):
+class StockEntry (Entry):
 
-    TABLE = 'stock_courses_table'
+    ID = 'stock_table'
 
     #
     # Initialize entry
@@ -245,7 +245,7 @@ class StockCourseEntry (Entry):
     @staticmethod
     def add_table_to_database (cursor):
 
-        command = 'CREATE TABLE {0} ('.format (StockCourseEntry.TABLE)
+        command = 'CREATE TABLE {0} ('.format (StockEntry.ID)
         command += 'hash VARCHAR (64), '
         command += 'timestamp LONG NOT NULL, '
         command += 'id VARCHAR (3), '
@@ -258,7 +258,7 @@ class StockCourseEntry (Entry):
     # Insert this entry into a database
     #
     def insert_into_database (self, cursor):
-        command = 'INSERT INTO {0} '.format (StockCourseEntry.TABLE)
+        command = 'INSERT INTO {0} '.format (StockEntry.ID)
         command += '(hash, timestamp, id, course) '
         command += 'values (?, ?, ?, ?)'
 
@@ -284,7 +284,7 @@ class StockCourseEntry (Entry):
         return frame
 
     def __repr__ (self):
-        text = 'StockCourseEntry ('
+        text = 'StockEntry ('
         text += 'timestamp={0}, '.format (self.timestamp)
         text += 'id={0}, '.format (self.id)
         text += 'course={0}'.format (self.course)
@@ -298,7 +298,7 @@ class StockCourseEntry (Entry):
 #
 class NewsEntry (Entry):
 
-    TABLE = 'news_courses_table'
+    ID = 'news_courses_table'
 
     #
     # Initialize entry
@@ -324,7 +324,7 @@ class NewsEntry (Entry):
     #
     @staticmethod
     def add_table_to_database (cursor):
-        command = 'CREATE TABLE {0} ('.format (NewsEntry.TABLE)
+        command = 'CREATE TABLE {0} ('.format (NewsEntry.ID)
         command += 'hash VARCHAR (64), '
         command += 'timestamp LONG NOT NULL, '
         command += 'source VARCHAR (8), '
@@ -337,7 +337,7 @@ class NewsEntry (Entry):
     # Insert this entry into a database
     #
     def insert_into_database (self, cursor):
-        command = 'INSERT INTO {0} '.format (NewsEntry.TABLE)
+        command = 'INSERT INTO {0} '.format (NewsEntry.ID)
         command += '(hash, timestamp, source, text) '
         command += 'values (?, ?, ?, ?)'
 
@@ -395,9 +395,9 @@ class Database:
     #
     def create (self):
 
-        CoinCourseEntry.add_table_to_database (self.cursor)
-        CurrencyCourseEntry.add_table_to_database (self.cursor)
-        StockCourseEntry.add_table_to_database (self.cursor)
+        CoinEntry.add_table_to_database (self.cursor)
+        CurrencyEntry.add_table_to_database (self.cursor)
+        StockEntry.add_table_to_database (self.cursor)
         NewsEntry.add_table_to_database (self.cursor)
 
     #
@@ -411,8 +411,7 @@ class Database:
     #
     def add (self, entry):
 
-
-        command = 'DELETE FROM {table} WHERE hash="{hash}"'.format (table=entry.TABLE, hash=entry.hash)
+        command = 'DELETE FROM {table} WHERE hash="{hash}"'.format (table=entry.ID, hash=entry.hash)
         self.cursor.execute (command)
 
         entry.insert_into_database (self.cursor)
@@ -424,60 +423,28 @@ class Database:
         self.connection.commit ()
 
     #
-    # Return dataframe of coin course entries
+    # Return dataframe of entries
     #
-    def get_coin_course_entries (self):
+    def get_entries (self, table):
 
-        command = 'SELECT * FROM {0}'.format (CoinCourseEntry.TABLE)
+        command = 'SELECT * FROM {0}'.format (table)
 
         entries = []
 
         for row in self.cursor.execute (command):
-            entries.append (CoinCourseEntry (*row[1:]))
+            if table == CoinEntry.ID:
+                entries.append (CoinEntry (*row[1:]))
+            elif table == CurrencyEntry.ID:
+                entries.append (CurrencyEntry (*row[1:]))
+            elif table == StockEntry.ID:
+                entries.append (StockEntry (*row[1:]))
+            elif table == NewsEntry.ID:
+                entries.append (NewsEntry (*row[1:]))
+            else:
+                raise RuntimeError ('Unknown database table type')
 
         return entries
 
-    #
-    # Return list of currency course entries
-    #
-    def get_currency_course_entries (self):
-
-        command = 'SELECT * FROM {0}'.format (CurrencyCourseEntry.TABLE)
-
-        entries = []
-
-        for row in self.cursor.execute (command):
-            entries.append (CurrencyCourseEntry (*row[1:]))
-
-        return entries
-
-    #
-    # Return list of stock course entries
-    #
-    def get_stock_course_entries (self):
-
-        command = 'SELECT * FROM {0}'.format (StockCourseEntry.TABLE)
-
-        entries = []
-
-        for row in self.cursor.execute (command):
-            entries.append (StockCourseEntry (*row[1:]))
-
-        return entries
-
-    #
-    # Return list of news entries
-    #
-    def get_news_entries (self):
-
-        command = 'SELECT * FROM {0}'.format (NewsEntry.TABLE)
-
-        entries = []
-
-        for row in self.cursor.execute (command):
-            entries.append (NewsEntry (*row[1:]))
-
-        return entries
 
 
 #--------------------------------------------------------------------------
@@ -494,36 +461,36 @@ class TestDatabase (unittest.TestCase):
         database.create ()
 
         #
-        # Setup some coin course entries
+        # Setup some coin entries
         #
-        coin_course_entries = []
-        coin_course_entries.append (CoinCourseEntry (1234, 'eth', 'coinbase', 230.0, 'eur'))
-        coin_course_entries.append (CoinCourseEntry (1238, 'btc', 'anycoind', 2200.12, 'eur'))
-        coin_course_entries.append (CoinCourseEntry (1410, 'eth', 'coinbase', 240.0, 'usd'))
+        coin_entries = []
+        coin_entries.append (CoinEntry (1234, 'eth', 'coinbase', 230.0, 'eur'))
+        coin_entries.append (CoinEntry (1238, 'btc', 'anycoind', 2200.12, 'eur'))
+        coin_entries.append (CoinEntry (1410, 'eth', 'coinbase', 240.0, 'usd'))
 
-        for entry in coin_course_entries:
+        for entry in coin_entries:
             database.add (entry)
 
         #
-        # Setup some currency course entries
+        # Setup some currency entries
         #
-        currency_course_entries = []
-        currency_course_entries.append (CurrencyCourseEntry (1236, 'eur', 230.0))
-        currency_course_entries.append (CurrencyCourseEntry (1237, 'eur', 2200.12))
-        currency_course_entries.append (CurrencyCourseEntry (1416, 'usd', 240.0))
+        currency_entries = []
+        currency_entries.append (CurrencyEntry (1236, 'eur', 230.0))
+        currency_entries.append (CurrencyEntry (1237, 'eur', 2200.12))
+        currency_entries.append (CurrencyEntry (1416, 'usd', 240.0))
 
-        for entry in currency_course_entries:
+        for entry in currency_entries:
             database.add (entry)
 
         #
         # Setup some stock course entries
         #
-        stock_course_entries = []
-        stock_course_entries.append (StockCourseEntry (1234, 'gdax',   230.0))
-        stock_course_entries.append (StockCourseEntry (1239, 'nasdaq', 2200.12))
-        stock_course_entries.append (StockCourseEntry (1418, 'gdax',   240.0))
+        stock_entries = []
+        stock_entries.append (StockEntry (1234, 'gdax',   230.0))
+        stock_entries.append (StockEntry (1239, 'nasdaq', 2200.12))
+        stock_entries.append (StockEntry (1418, 'gdax',   240.0))
 
-        for entry in stock_course_entries:
+        for entry in stock_entries:
             database.add (entry)
 
         #
@@ -540,34 +507,79 @@ class TestDatabase (unittest.TestCase):
         #
         # Check database content
         #
-        database_coin_course_entries = database.get_coin_course_entries ()
-        self.assertEqual (len (coin_course_entries), len (database_coin_course_entries))
+        database_coin_entries = database.get_entries (CoinEntry.ID)
+        self.assertEqual (len (coin_entries), len (database_coin_entries))
 
-        for a, b in zip (coin_course_entries, database_coin_course_entries):
+        for a, b in zip (coin_entries, database_coin_entries):
             self.assertEqual (repr (a), repr (b))
             self.assertEqual (a.hash, b.hash)
 
-        database_currency_course_entries = database.get_currency_course_entries ()
-        self.assertEqual (len (currency_course_entries), len (database_currency_course_entries))
+        database_currency_entries = database.get_entries (CurrencyEntry.ID)
+        self.assertEqual (len (currency_entries), len (database_currency_entries))
 
-        for a, b in zip (currency_course_entries, database_currency_course_entries):
+        for a, b in zip (currency_entries, database_currency_entries):
             self.assertEqual (repr (a), repr (b))
             self.assertEqual (a.hash, b.hash)
 
-        database_stock_course_entries = database.get_stock_course_entries ()
-        self.assertEqual (len (stock_course_entries), len (database_stock_course_entries))
+        database_stock_entries = database.get_entries (StockEntry.ID)
+        self.assertEqual (len (stock_entries), len (database_stock_entries))
 
-        for a, b in zip (stock_course_entries, database_stock_course_entries):
+        for a, b in zip (stock_entries, database_stock_entries):
             self.assertEqual (repr (a), repr (b))
             self.assertEqual (a.hash, b.hash)
 
-        database_news_entries = database.get_news_entries ()
+        database_news_entries = database.get_entries (NewsEntry.ID)
         self.assertEqual (len (news_entries), len (database_news_entries))
 
         for a, b in zip (news_entries, database_news_entries):
             self.assertEqual (repr (a), repr (b))
             self.assertEqual (a.hash, b.hash)
 
+
+#--------------------------------------------------------------------------
+# Database functions
+#
+
+#
+# Create new database
+#
+def database_create (args):
+    if os.path.exists (args.database):
+        raise RuntimeError ('Database file {0} already exists.'.format (args.database))
+
+    database = Database (args.database)
+    database.create ()
+
+#
+# List content of a database table
+#
+def database_list_table (args):
+    database = Database (args.database)
+
+    if args.list == 'currencies':
+        entries = database.get_entries (CurrencyEntry.ID)
+    elif args.list == 'coins':
+        entries = database.get_entries (CoinEntry.ID)
+    elif args.list == 'stock':
+        entries = database.get_entries (StockEntry.ID)
+    elif args.list == 'news':
+        entries = database.get_entries (NewsEntry.ID)
+    else:
+        raise RuntimeError ('Illegal database table name \'{0}\''.format (args.list))
+
+    frame = None
+    for entry in entries:
+        frame = entry.add_to_dataframe (frame)
+
+    pd.set_option ('display.width', 256)
+    pd.set_option ('display.max_rows', len (frame))
+    print (frame)
+
+#
+# Print database summary
+#
+def database_summary (args):
+    pass
 
 #--------------------------------------------------------------------------
 # MAIN
@@ -579,51 +591,20 @@ if __name__ == '__main__':
     #
     parser = argparse.ArgumentParser ()
 
-    parser.add_argument ('-c', '--create', action='store_true', default=False, help='Create new database')
-    parser.add_argument ('-l', '--list',   action='store', choices=['currencies', 'coins', 'stock', 'news'], help='List database content')
-    parser.add_argument ('database',       type=str, default=None, help='Database file')
+    parser.add_argument ('-c', '--create',  action='store_true', default=False, help='Create new database')
+    parser.add_argument ('-l', '--list',    action='store', choices=['currencies', 'coins', 'stock', 'news'], help='List database content')
+    parser.add_argument ('-s', '--summary', action='store_true', default=False, help='Print database summary')
+    parser.add_argument ('database',        type=str, default=None, help='Database file')
 
     args = parser.parse_args ()
 
     assert args.database is not None
 
-
-    #
-    # Create and setup new database file
-    #
     if args.create:
-        if os.path.exists (args.database):
-            raise RuntimeError ('Database file {0} already exists.'.format (args.database))
+        database_create (args)
 
-        database = Database (args.database)
-        database.create ()
+    elif args.list is not None:
+        database_list_table (args)
 
-        sys.exit (0)
-
-    #
-    # List database content
-    #
-    if args.list is not None:
-
-        database = Database (args.database)
-
-        if args.list == 'currencies':
-            entries = database.get_currency_course_entries ()
-        elif args.list == 'coins':
-            entries = database.get_coin_course_entries ()
-        elif args.list == 'stock':
-            entries = database.get_stock_course_entries ()
-        elif args.list == 'news':
-            entries = database.get_news_entries ()
-        else:
-            raise RuntimeError ('Illegal database table name \'{0}\''.format (args.list))
-
-        frame = None
-        for entry in entries:
-            frame = entry.add_to_dataframe (frame)
-
-        pd.set_option ('display.width', 256)
-        pd.set_option ('display.max_rows', len (frame))
-        print (frame)
-
-        sys.exit (0)
+    elif args.summary:
+        database_summary (args)

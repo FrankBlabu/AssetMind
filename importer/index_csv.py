@@ -10,7 +10,7 @@ import pandas as pd
 import time
 
 from database.database import Database
-from database.database import StockCourseEntry
+from database.database import StockEntry
 
 #--------------------------------------------------------------------------
 # Local functions
@@ -53,7 +53,7 @@ if __name__ == '__main__':
         row = data.ix[i]
 
         if row['Low'] != 'null' and row['High'] != 'null':
-            entry = StockCourseEntry (to_date (row['Date']), args.id.lower (), (float (row['High']) + float (row['Low'])) / 2)
+            entry = StockEntry (to_date (row['Date']), args.id.lower (), (float (row['High']) + float (row['Low'])) / 2)
             database.add (entry)
 
     database.commit ()
