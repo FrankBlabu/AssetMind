@@ -8,6 +8,7 @@
 import argparse
 import codecs
 import feedparser
+import sys
 import time
 
 from database.database import Database
@@ -26,9 +27,23 @@ class RSSScraper:
         feed = feedparser.parse (args.url)
 
         for post in feed.entries:
-            print (post.title.encode ('utf-8'))
+            print (self.to_string (post.title))
+            print ('  ', self.to_string (post.link))
+            print ('  ', self.to_string (post.description))
+            print ('  ', self.to_date (self.to_string (post.published)))
 
         #database.commit ()
+
+    #
+    # Convert text into simple ASCII representation
+    #
+    def to_string (self, text):
+        text = codecs.encode (text, encoding='charmap', errors='ignore')
+        text = codecs.decode (text, encoding='charmap', errors='ignore')
+        return text
+
+    def to_date (self, text):
+        return time.strptime (text[:text.index ('T')], '%Y-%m-%d')
 
 
 #--------------------------------------------------------------------------
