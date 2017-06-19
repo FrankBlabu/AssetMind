@@ -9,6 +9,8 @@
 
 import argparse
 import GDAX
+import pandas as pd
+import sys
 import time
 import unittest
 
@@ -23,7 +25,10 @@ class GDAXScraper:
     def __init__ (self):
         pass
 
-    def execute (self, database, args):
+    #
+    # Scrape available information out of the GDAX API
+    #
+    def scrape (self, database, args):
 
         client = GDAX.PublicClient ()
 
@@ -61,14 +66,22 @@ class GDAXScraper:
 
             print (frame)
 
+    #
+    # Print summary of the information available from the GDAX public API
+    #
+    def summary (self, args):
 
-#--------------------------------------------------------------------------
-# Unittests
-#
-class TestGDAXScraper (unittest.TestCase):
+        client = GDAX.PublicClient ()
 
-    def test_scraper (self):
-        pass
+        #
+        # Available products
+        #
+        title = 'Products'
+        print (title)
+        print (len (title) * '-')
+
+        for product in client.getProducts ():
+            print (product['display_name'])
 
 
 #--------------------------------------------------------------------------
@@ -86,10 +99,11 @@ if __name__ == '__main__':
     # Parse command line arguments
     #
     parser = argparse.ArgumentParser ()
-    parser.add_argument ('-s', '--start',    required=False, type=to_date, help='Start date (YYYY-MM-DD)')
+    parser.add_argument ('-b', '--begin',    required=False, type=to_date, help='Begin date (YYYY-MM-DD)')
     parser.add_argument ('-e', '--end',      required=False, type=to_date, help='End date (YYYY-MM-DD)')
     parser.add_argument ('-d', '--database', required=False, type=str, default=':memory:', help='Database file')
     parser.add_argument ('-v', '--verbose',  action='store_true', default=False, help='Verbose output')
+    parser.add_argument ('-s', '--summary',  action='store_true', default=False, help='Print summary of available information')
 
     args = parser.parse_args ()
 
@@ -99,4 +113,9 @@ if __name__ == '__main__':
         database.create ()
 
     scraper = GDAXScraper ()
-    scraper.execute (database, args)
+
+    if args.summary:
+        scraper.summary (args)
+        sys.exit (0)
+
+    scraper.scrape (database, args)
