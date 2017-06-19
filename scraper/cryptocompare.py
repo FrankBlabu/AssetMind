@@ -19,6 +19,8 @@ from database.database import Database
 #
 class CryptoCompareScraper:
 
+    selected_coins = sorted (['ETH', 'ETC', 'BTC', 'XMR', 'XRP'])
+
     def __init__ (self):
         pass
 
@@ -46,27 +48,37 @@ class CryptoCompareScraper:
 
         for key in sorted (coins.keys ()):
             entry = coins[key]
-            frame.loc[len (frame)] = [key,
-                                      entry['CoinName'],
-                                      entry['Algorithm'],
-                                      entry['ProofType'],
-                                      entry['TotalCoinSupply'],
+            frame.loc[len (frame)] = [key.strip (),
+                                      entry['CoinName'].strip (),
+                                      entry['Algorithm'].strip (),
+                                      entry['ProofType'].strip (),
+                                      entry['TotalCoinSupply'].strip (),
                                       'Yes' if entry['FullyPremined'] != '0' else 'No']
 
         print (frame.to_string ())
         print ('\n')
 
-        title = 'Selected prices'
+        title = 'Selected coins'
         print (title)
         print (len (title) * '-')
 
-        selected_coins = sorted (['ETH', 'ETC', 'BTC', 'XMR', 'XRP'])
-        prices = client.get_price (selected_coins)
+        prices = client.get_price (CryptoCompareScraper.selected_coins)
 
-        frame = pd.DataFrame (columns=['Id', 'EUR', 'USD', 'BTC'])
+        frame = pd.DataFrame (columns=['Id', 'EUR', 'USD', 'BTC', 'Average (USD)', 'Gradient (%)', 'Volumen'])
 
-        for coin in selected_coins:
-            frame.loc[len (frame)] = [coin, prices[coin]['EUR'], prices[coin]['USD'], prices[coin]['BTC']]
+        for coin in CryptoCompareScraper.selected_coins:
+
+            price = prices[coin]
+            average = client.get_average_price (coin)
+            trade = client.get_trading_info (coin)
+
+            frame.loc[len (frame)] = [coin,
+                                      price['EUR'],
+                                      price['USD'],
+                                      price['BTC'],
+                                      average,
+                                      trade['CHANGEPCT24HOUR'],
+                                      trade['VOLUME24HOURTO']]
 
         print (frame.to_string ())
 
