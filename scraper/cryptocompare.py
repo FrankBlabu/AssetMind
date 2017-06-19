@@ -6,16 +6,13 @@
 #
 
 import argparse
-import json
 import pandas as pd
 import sys
 import time
-import urllib
 
 import api.cryptocompare
 
 from database.database import Database
-from database.database import CoinEntry
 
 #--------------------------------------------------------------------------
 # Scraper adding data extracted from Cryptocompare to the database
@@ -45,21 +42,31 @@ class CryptoCompareScraper:
         print (title)
         print (len (title) * '-')
 
-        frame = pd.DataFrame (columns=['Id', 'Name', 'Price', 'Algorithm', 'Proof Type', 'Total supply', 'Pre mined'])
-
-        prices = client.get_price (coins.keys ())
-
-        print (prices)
+        frame = pd.DataFrame (columns=['Id', 'Name', 'Algorithm', 'Proof Type', 'Total supply', 'Pre mined'])
 
         for key in sorted (coins.keys ()):
             entry = coins[key]
             frame.loc[len (frame)] = [key,
                                       entry['CoinName'],
-                                      client.get_price (key),
                                       entry['Algorithm'],
                                       entry['ProofType'],
                                       entry['TotalCoinSupply'],
                                       'Yes' if entry['FullyPremined'] != '0' else 'No']
+
+        print (frame.to_string ())
+        print ('\n')
+
+        title = 'Selected prices'
+        print (title)
+        print (len (title) * '-')
+
+        selected_coins = sorted (['ETH', 'ETC', 'BTC', 'XMR', 'XRP'])
+        prices = client.get_price (selected_coins)
+
+        frame = pd.DataFrame (columns=['Id', 'EUR', 'USD', 'BTC'])
+
+        for coin in selected_coins:
+            frame.loc[len (frame)] = [coin, prices[coin]['EUR'], prices[coin]['USD'], prices[coin]['BTC']]
 
         print (frame.to_string ())
 

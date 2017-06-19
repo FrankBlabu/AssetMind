@@ -27,19 +27,15 @@ class CryptoCompare:
 
     def get_price (self, id):
 
-        print (len (id))
-
         ids = id
         if isinstance (id, list):
             ids = ''
             separator = ''
 
             for i in id:
-                print (i)
-                ids += separator + i
+                ids += separator + i.strip ()
                 separator = ','
 
-        print (command)
 
         command = 'https://min-api.cryptocompare.com/data/pricemulti?fsyms={0}&tsyms=BTC,USD,EUR'.format (ids)
         return self.query (command)
