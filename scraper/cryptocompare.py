@@ -45,13 +45,21 @@ class CryptoCompareScraper:
         print (title)
         print (len (title) * '-')
 
-        frame = pd.DataFrame (columns=['Id', 'Name', 'Algorithm', 'Proof Type'])
+        frame = pd.DataFrame (columns=['Id', 'Name', 'Price', 'Algorithm', 'Proof Type', 'Total supply', 'Pre mined'])
 
-        coins = client.get_coin_list ()
+        prices = client.get_price (coins.keys ())
+
+        print (prices)
 
         for key in sorted (coins.keys ()):
             entry = coins[key]
-            frame.loc[len (frame)] = [key, entry['CoinName'], entry['Algorithm'], entry['ProofType']]
+            frame.loc[len (frame)] = [key,
+                                      entry['CoinName'],
+                                      client.get_price (key),
+                                      entry['Algorithm'],
+                                      entry['ProofType'],
+                                      entry['TotalCoinSupply'],
+                                      'Yes' if entry['FullyPremined'] != '0' else 'No']
 
         print (frame.to_string ())
 

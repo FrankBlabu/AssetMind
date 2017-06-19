@@ -22,7 +22,28 @@ class CryptoCompare:
         pass
 
     def get_coin_list (self):
-        query = 'https://www.cryptocompare.com/api/data/coinlist'
+        command = 'https://www.cryptocompare.com/api/data/coinlist'
+        return self.query (command)['Data']
 
-        ret = urllib.request.urlopen (urllib.request.Request (query))
-        return json.loads (ret.read ().decode ('utf8'))['Data']
+    def get_price (self, id):
+
+        print (len (id))
+
+        ids = id
+        if isinstance (id, list):
+            ids = ''
+            separator = ''
+
+            for i in id:
+                print (i)
+                ids += separator + i
+                separator = ','
+
+        print (command)
+
+        command = 'https://min-api.cryptocompare.com/data/pricemulti?fsyms={0}&tsyms=BTC,USD,EUR'.format (ids)
+        return self.query (command)
+
+    def query (self, command):
+        ret = urllib.request.urlopen (urllib.request.Request (command))
+        return json.loads (ret.read ().decode ('utf8'))
