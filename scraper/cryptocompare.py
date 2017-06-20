@@ -127,6 +127,5 @@ if __name__ == '__main__':
 
     if args.summary:
         scraper.summary (args)
-        sys.exit (0)
-
-    scraper.scrape (database, args)
+    else:
+        scraper.scrape (database, args)
