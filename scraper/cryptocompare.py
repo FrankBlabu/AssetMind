@@ -13,13 +13,14 @@ import time
 import api.cryptocompare
 
 from database.database import Database
+from database.database import CoinEntry
 
 #--------------------------------------------------------------------------
 # Scraper adding data extracted from Cryptocompare to the database
 #
 class CryptoCompareScraper:
 
-    selected_coins = sorted (['ETH', 'ETC', 'BTC', 'XMR', 'XRP'])
+    selected_coins = sorted (['ETH', 'ETC', 'BTC', 'XMR', 'XRP', 'LTC', 'ZEC', 'DASH'])
 
     def __init__ (self):
         pass
@@ -28,8 +29,19 @@ class CryptoCompareScraper:
     # Scrape available information out of the GDAX API
     #
     def scrape (self, database, args):
-        pass
 
+        client = api.cryptocompare.CryptoCompare ()
+
+        for coin in CryptoCompareScraper.selected_coins:
+
+            print (coin)
+
+            prices = client.get_historical_prices (id=coin, interval=api.cryptocompare.CryptoCompare.Interval.DAY)
+
+            for price in prices:
+                database.add (CoinEntry (price['time'], coin, 'ccmp', (price['high'] + price['low']) / 2, 'usd'))
+
+        database.commit ()
 
     #
     # Print summary of the data retrievable via the API connection
@@ -37,7 +49,6 @@ class CryptoCompareScraper:
     def summary (self, args):
 
         client = api.cryptocompare.CryptoCompare ()
-
         coins = client.get_coin_list ()
 
         title = 'Coins'

@@ -67,7 +67,7 @@ class CoinEntry (Entry):
 
         super ().__init__ (timestamp, id, source)
 
-        assert len (id) == 3
+        assert len (id) <= 8
         assert len (source) <= 8
         assert isinstance (course, float)
         assert isinstance (currency, str)
@@ -88,7 +88,7 @@ class CoinEntry (Entry):
         command = 'CREATE TABLE {0} ('.format (CoinEntry.ID)
         command += 'hash VARCHAR (64), '
         command += 'timestamp LONG NOT NULL, '
-        command += 'id VARCHAR (3), '
+        command += 'id VARCHAR (8), '
         command += 'source VARCHAR (8), '
         command += 'course REAL, '
         command += 'currency VARCHAR (3)'
@@ -242,7 +242,7 @@ class StockEntry (Entry):
         command = 'CREATE TABLE {0} ('.format (StockEntry.ID)
         command += 'hash VARCHAR (64), '
         command += 'timestamp LONG NOT NULL, '
-        command += 'id VARCHAR (3), '
+        command += 'id VARCHAR (8), '
         command += 'course REAL'
         command += ')'
 

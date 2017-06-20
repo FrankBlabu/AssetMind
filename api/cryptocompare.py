@@ -5,9 +5,12 @@
 # Frank Blankenburg, Jun. 2017
 #
 
+import datetime
 import json
 import urllib
+import urllib.request
 
+from enum import Enum
 
 #--------------------------------------------------------------------------
 # Interface for accessing the Cryptocompare web API
@@ -37,6 +40,27 @@ class CryptoCompare:
             .format (source=id, markets=self.id_as_list (CryptoCompare.markets))
         return self.query (command)['RAW']
 
+    class Interval (Enum):
+        DAY    = 1
+        HOUR   = 2
+        MINUTE = 3
+
+    def get_historical_prices (self, id, interval):
+
+        if interval is CryptoCompare.Interval.DAY:
+            interval_id = 'day'
+        elif interval is CryptoCompare.Interval.HOUR:
+            interval_id = 'hour'
+        elif interval is CryptoCompare.Interval.MINUTE:
+            interval_id = 'minute'
+        else:
+            raise RunimeError ('Unknown enum id \'{0}\''.format (interval.name))
+
+        command = 'https://min-api.cryptocompare.com/data/histo{interval}?fsym={id}&tsym=USD&limit=2000' \
+        .format (interval=interval_id, id=id)
+
+        return self.query (command)['Data']
+
     def query (self, command):
         ret = urllib.request.urlopen (urllib.request.Request (command))
         return json.loads (ret.read ().decode ('utf8'))
@@ -64,4 +88,7 @@ class CryptoCompare:
 if __name__ == '__main__':
     client = CryptoCompare ()
 
-    print (client.get_trading_info ('ETH'))
+    entries = client.get_historical_prices ('ETH', CryptoCompare.Interval.DAY)
+    print (len (entries))
+    print (datetime.datetime.fromtimestamp (entries[0]['time']))
+    print (datetime.datetime.fromtimestamp (entries[-1]['time']))
