@@ -14,6 +14,8 @@ import sys
 import time
 import unittest
 
+from database.encryption import Encryption
+
 #--------------------------------------------------------------------------
 # Base class for database entries
 #
@@ -35,7 +37,7 @@ class Entry:
         assert isinstance (id, str)
         assert isinstance (source, str) or source is None
         assert '-' not in id
-        assert '-' not in source
+        assert source is None or '-' not in source
 
         if source is not None:
             content = '{0}-{1}-{2}'.format (timestamp, id, source)
@@ -367,6 +369,98 @@ class NewsEntry (Entry):
         return text
 
 #--------------------------------------------------------------------------
+# Container representing an arbitrary encrypted text entry
+#
+class EncryptedEntry (Entry):
+
+    ID = 'encrypted'
+
+    #
+    # Initialize entry
+    #
+    # @param timestamp Event timestamp in UTC unix epoch seconds
+    #
+    def __init__ (self, timestamp, id, text=None):
+
+        super ().__init__ (timestamp, id, None)
+
+        assert len (id) <= 64
+        assert text is None or isinstance (text, str)
+
+        self.text = text
+
+    def set_text (self, text, password):
+
+        assert isinstance (text, str)
+        assert isinstance (password, str)
+
+        encryption = Encryption ()
+        self.text = encryption.encrypt (text, password)
+
+    def get_text (self, password):
+        encryption = Encryption ()
+        return encryption.decrypt (self.text, password)
+
+    #
+    # Add matching table to database
+    #
+    @staticmethod
+    def add_table_to_database (cursor):
+
+        command = 'CREATE TABLE {0} ('.format (EncryptedEntry.ID)
+        command += 'hash VARCHAR (64), '
+        command += 'timestamp LONG NOT NULL, '
+        command += 'id VARCHAR (64), '
+        command += 'text MEMO'
+        command += ')'
+
+        cursor.execute (command)
+
+    #
+    # Insert this entry into a database
+    #
+    def insert_into_database (self, cursor):
+        command = 'INSERT INTO {0} '.format (EncryptedEntry.ID)
+        command += '(hash, timestamp, id, text) '
+        command += 'values (?, ?, ?, ?)'
+
+        params = []
+        params.append (self.hash)
+        params.append (self.timestamp)
+        params.append (self.id)
+        params.append (self.text)
+
+        cursor.execute (command, params)
+
+    #
+    # Add entry to dataframe
+    #
+    # @param frame Data frame to add entry to or 'None' if an appropriate frame should be created
+    #
+    def add_to_dataframe (self, frame):
+        if frame is None:
+            frame = pd.DataFrame (columns=['timestamp', 'id', 'text'])
+
+        frame.loc[len (frame)] = [pd.Timestamp (time.ctime (self.timestamp)), self.id, self.text]
+
+        return frame
+
+    def __repr__ (self):
+        t = self.text
+
+        if len (t) > 16:
+            t = t[:16] + '...'
+
+        text = 'CurrencyEntry ('
+        text += 'timestamp={0}, '.format (self.timestamp)
+        text += 'id={0}, '.format (self.id)
+        text += 'text={0}'.format (t)
+        text += ')'
+
+        return text
+
+
+#--------------------------------------------------------------------------
 # Database handler
 #
 class Database:
@@ -390,6 +484,7 @@ class Database:
         CurrencyEntry.add_table_to_database (self.cursor)
         StockEntry.add_table_to_database (self.cursor)
         NewsEntry.add_table_to_database (self.cursor)
+        EncryptedEntry.add_table_to_database (self.cursor)
 
     #
     # Add entry to the database
@@ -416,9 +511,12 @@ class Database:
     #
     # Return dataframe of entries
     #
-    def get_entries (self, table):
+    def get_entries (self, table, id=None):
 
         command = 'SELECT * FROM {0}'.format (table)
+
+        if id is not None:
+            command += ' WHERE id=\'{0}\''.format (id)
 
         entries = []
 
@@ -431,6 +529,8 @@ class Database:
                 entries.append (StockEntry (*row[1:]))
             elif table == NewsEntry.ID:
                 entries.append (NewsEntry (*row[1:]))
+            elif table == EncryptedEntry.ID:
+                entries.append (EncryptedEntry (*row[1:]))
             else:
                 raise RuntimeError ('Unknown database table type')
 
@@ -443,6 +543,9 @@ class Database:
 #
 class TestDatabase (unittest.TestCase):
 
+    #
+    # Test various database read/write operations
+    #
     def test_database_read_write (self):
 
         #
@@ -495,6 +598,8 @@ class TestDatabase (unittest.TestCase):
         for entry in news_entries:
             database.add (entry)
 
+        database.commit ()
+
         #
         # Check database content
         #
@@ -525,6 +630,53 @@ class TestDatabase (unittest.TestCase):
         for a, b in zip (news_entries, database_news_entries):
             self.assertEqual (repr (a), repr (b))
             self.assertEqual (a.hash, b.hash)
+
+    #
+    # Test handling of encrypted database entries
+    #
+    def test_database_encryption (self):
+
+        #
+        # Create database
+        #
+        database = Database (':memory:')
+        database.create ()
+
+        #
+        # Setup some coin entries
+        #
+        encryption = Encryption ()
+        password1 = encryption.generate_password ()
+        password2 = encryption.generate_password ()
+
+        entries = []
+
+        text1 = "{'text': 'abc', 'id': 23}"
+        entries.append (EncryptedEntry (1234, 'twitter'))
+        entries[-1].set_text (text1, password1)
+
+        text2 = "{'login': 'xyz123', 'auth': 42}"
+        entries.append (EncryptedEntry (5678, 'facebook'))
+        entries[-1].set_text (text2, password2)
+
+        for entry in entries:
+            database.add (entry)
+
+        database.commit ()
+
+        entries = database.get_entries (EncryptedEntry.ID, id='twitter')
+
+        self.assertEqual (len (entries), 1)
+        self.assertEqual (entries[0].get_text (password1), text1)
+        self.assertNotEqual (entries[0].get_text (password1), text2)
+        self.assertNotEqual (entries[0].get_text (password2), text1)
+
+        entries = database.get_entries (EncryptedEntry.ID, id='facebook')
+
+        self.assertEqual (len (entries), 1)
+        self.assertEqual (entries[0].get_text (password2), text2)
+        self.assertNotEqual (entries[0].get_text (password2), text1)
+        self.assertNotEqual (entries[0].get_text (password1), text2)
 
 
 #--------------------------------------------------------------------------
@@ -569,6 +721,8 @@ def database_list_table (args):
         print_as_frame ('Stock', database.get_entries (StockEntry.ID))
     if args.list == 'news' or args.list == 'all':
         print_as_frame ('News', database.get_entries (NewsEntry.ID))
+    if args.list == 'encrypted' or args.list == 'all':
+        print_as_frame ('Encrypted', database.get_entries (EncryptedEntry.ID))
 
 #
 # Print database summary
@@ -613,7 +767,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser ()
 
     parser.add_argument ('-c', '--create',  action='store_true', default=False, help='Create new database')
-    parser.add_argument ('-l', '--list',    action='store', choices=['currencies', 'coins', 'stock', 'news', 'all'], help='List database content')
+    parser.add_argument ('-l', '--list',    action='store', choices=['currencies', 'coins', 'stock', 'news', 'encrypted', 'all'], help='List database content')
     parser.add_argument ('-s', '--summary', action='store_true', default=False, help='Print database summary')
     parser.add_argument ('database',        type=str, default=None, help='Database file')
 

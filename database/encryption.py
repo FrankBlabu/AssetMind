@@ -23,10 +23,16 @@ class Encryption:
 
     SALT_SEED = 'jfhjs784Hjlonbc23'
 
+    #
+    # Encrypt text
+    #
     def encrypt (self, text, password):
         f = cryptography.fernet.Fernet (self.get_key (password))
         return f.encrypt (text.encode ()).decode ()
 
+    #
+    # Decrypt text
+    #
     def decrypt (self, text, password):
         try:
             f = cryptography.fernet.Fernet (self.get_key (password))
@@ -36,6 +42,9 @@ class Encryption:
 
         return result
 
+    #
+    # Generate encryption/decryption key from password and salt
+    #
     def get_key (self, password):
         kdf = PBKDF2HMAC (algorithm=hashes.SHA256 (),
                           length=32,
@@ -43,6 +52,12 @@ class Encryption:
                           iterations=100000,
                           backend=default_backend ())
         return base64.urlsafe_b64encode (kdf.derive (password.encode ()))
+
+    #
+    # Generate probably safe password
+    #
+    def generate_password (self):
+        return base64.urlsafe_b64encode (os.urandom (random.randint (12, 22))).decode ()[:-2]
 
 
 #----------------------------------------------------------------------------
@@ -76,7 +91,7 @@ class TestEncryption (unittest.TestCase):
         for _ in range (10):
             encrypt = Encryption ()
 
-            password = base64.urlsafe_b64encode (os.urandom (random.randint (5, 20))).decode ()[:-2]
+            password = encrypt.generate_password ()
             text = self.generate_random_text ()
 
             encrypted = encrypt.encrypt (text, password)
@@ -92,8 +107,11 @@ class TestEncryption (unittest.TestCase):
         for _ in range (10):
             encrypt = Encryption ()
 
-            password1 = base64.urlsafe_b64encode (os.urandom (random.randint (5, 20))).decode ()[:-2]
-            password2 = base64.urlsafe_b64encode (os.urandom (random.randint (5, 20))).decode ()[:-2]
+            password1 = encrypt.generate_password ()
+            password2 = encrypt.generate_password ()
+
+            self.assertNotEqual (password1, password2)
+
             text = self.generate_random_text ()
 
             encrypted = encrypt.encrypt (text, password1)
@@ -101,20 +119,3 @@ class TestEncryption (unittest.TestCase):
 
             self.assertNotEqual (text, decrypted)
             self.assertNotEqual (text, encrypted)
-
-
-if __name__ == '__main__':
-    encrypt = Encryption ()
-    key = encrypt.get_key ('abcdf')
-
-    print (len (key))
-    print (key)
-
-    encoded = encrypt.encrypt ("Dieser Text ist doof !", "abcdef")
-    print (encoded)
-    print (encrypt.decrypt (encoded, "abcdef"))
-
-    test = TestEncryption ()
-    print (test.generate_random_text ())
-
-    print (base64.urlsafe_b64encode (os.urandom (random.randint (5, 20))).decode ()[:-2])
