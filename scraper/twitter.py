@@ -59,6 +59,20 @@ class TwitterScraper:
         database.commit ()
 
     #
+    # Print feed summany
+    #
+    def summary (self, args):
+        credentials = self.get_credentials (args)
+
+        server = twitter.Twitter (auth=twitter.OAuth (credentials['access_key'],
+                                                      credentials['access_secret'],
+                                                      credentials['consumer_key'],
+                                                      credentials['consumer_secret']))
+
+        query = server.search.tweets (q='ethereum blockchain bitcoin', count=100)
+        print (query['search_metadata'])
+
+    #
     # Get tweets matching keywords
     #
     def get_tweets (self, args):
@@ -69,9 +83,8 @@ class TwitterScraper:
                                                       credentials['consumer_key'],
                                                       credentials['consumer_secret']))
 
-        query = server.search.tweets (q='ethereum')
-
-        print (query['statuses'])
+        query = server.search.tweets (q='ethereum blockchain bitcoin', count=100)
+        return query['statuses']
 
 
     #
@@ -103,20 +116,24 @@ if __name__ == '__main__':
         parser = argparse.ArgumentParser ()
 
         parser.add_argument ('-a', '--authenticate', action='store_true', default=False, help='Create authentification credentials')
-        parser.add_argument ('-c', '--credentials', action='store_true', default=False, help='List authentification credentials')
+        parser.add_argument ('-c', '--credentials', action='store_true', default=False, help='Show authentification credential set')
+        parser.add_argument ('-s', '--summary', action='store_true', default=False, help='Tweet summary')
         parser.add_argument ('-p', '--password', type=str, default=None, help='Passwort for database encryption')
         parser.add_argument ('database', type=str, default=':memory:', help='Database file')
 
         args = parser.parse_args ()
+        scraper = TwitterScraper ()
 
         if args.authenticate:
-            scraper = TwitterScraper ()
             scraper.authenticate (args)
 
         elif args.credentials:
-            scraper = TwitterScraper ()
             print (scraper.get_credentials (args))
 
+        elif args.summary:
+            scraper.summary (args)
+
         else:
-            scraper = TwitterScraper ()
-            scraper.get_tweets (args)
+            entries = scraper.get_tweets (args)
+            for entry in entries:
+                print (entry['text'])

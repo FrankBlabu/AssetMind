@@ -10,7 +10,6 @@ import hashlib
 import os.path
 import pandas as pd
 import sqlite3
-import sys
 import time
 import unittest
 
@@ -752,6 +751,7 @@ def database_summary (args):
     add_to_frame ('currency', CurrencyEntry.ID)
     add_to_frame ('stock', StockEntry.ID)
     add_to_frame ('news', NewsEntry.ID)
+    add_to_frame ('encrypted', EncryptedEntry.ID)
 
     print (frame)
 
