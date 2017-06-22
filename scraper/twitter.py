@@ -4,14 +4,23 @@
 #
 # Frank Blankenburg, Jun. 2017
 #
+# Resources:
+#
+# * https://marcobonzanini.com/2015/03/02/mining-twitter-data-with-python-part-1/
+#
 
 import argparse
+import codecs
+import nltk.corpus
+import re
 import json
+import string
 import twitter
 import time
 
 from database.database import Database
 from database.database import EncryptedEntry
+
 
 #----------------------------------------------------------------------------
 # Scraper for twitter data
@@ -22,7 +31,30 @@ class TwitterScraper:
     DATABASE_ID = 'twitter'
 
     def __init__ (self):
-        pass
+
+        emoticons_str = r"""
+            (?:
+                [:=;] # Eyes
+                [oO\-]? # Nose (optional)
+                [D\)\]\(\]/\\OpP] # Mouth
+            )"""
+
+        regex_str = [
+            emoticons_str,
+            r'<[^>]+>', # HTML tags
+            r'(?:@[\w_]+)', # @-mentions
+            r"(?:\#+[\w_]+[\w\'_\-]*[\w_]+)", # hash-tags
+            r'http[s]?://(?:[a-z]|[0-9]|[$-_@.&amp;+]|[!*\(\),]|(?:%[0-9a-f][0-9a-f]))+', # URLs
+
+            r'(?:(?:\d+,?)+(?:\.?\d+)?)', # numbers
+            r"(?:[a-z][a-z'\-_]+[a-z])", # words with - and '
+            r'(?:[\w_]+)', # other words
+            r'(?:\S)' # anything else
+        ]
+
+        self.tokens_regexp = re.compile (r'(' + '|'.join (regex_str) + ')', re.VERBOSE | re.IGNORECASE)
+        self.emoticon_regexp = re.compile (r'^' + emoticons_str + '$', re.VERBOSE | re.IGNORECASE)
+
 
     #
     # Perform authentification to get the necessary OAuth credentials
@@ -84,8 +116,16 @@ class TwitterScraper:
                                                       credentials['consumer_secret']))
 
         query = server.search.tweets (q='ethereum blockchain bitcoin', count=100)
-        return query['statuses']
 
+        tweets = []
+        for q in query['statuses']:
+            tweet = self.to_string (q['text'])
+            tweet = self.tokenize (tweet)
+            tweet = [token if self.emoticon_regexp.search (token) else token.lower () for token in tweet]
+
+            tweets.append (tweet)
+
+        return tweets
 
     #
     # Retrieve OAuth credentials from the database
@@ -104,10 +144,33 @@ class TwitterScraper:
 
         return json.loads (entry[0].get_text (args.password))
 
+    #
+    # Tokenize a tweet content
+    #
+    def tokenize (self, text):
+
+        terms = self.tokens_regexp.findall (text)
+
+        stop = nltk.corpus.stopwords.words ('english') + list (string.punctuation)+ ['rt', 'via']
+        terms = [term for term in terms if term not in stop and not term.startswith ('http:') and not term.startswith ('https:')]
+
+        return terms
+
+
+    #
+    # Convert text into simple ASCII representation
+    #
+    def to_string (self, text):
+        text = codecs.encode (text, encoding='charmap', errors='ignore')
+        text = codecs.decode (text, encoding='charmap', errors='ignore')
+        return text
+
 
 #----------------------------------------------------------------------------
 # MAIN
 #
+
+
 if __name__ == '__main__':
 
         #
@@ -134,6 +197,5 @@ if __name__ == '__main__':
             scraper.summary (args)
 
         else:
-            entries = scraper.get_tweets (args)
-            for entry in entries:
-                print (entry['text'])
+            for tweet in scraper.get_tweets (args):
+                print (tweet)
