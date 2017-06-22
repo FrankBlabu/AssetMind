@@ -51,6 +51,16 @@ class Entry:
         self.id = id
         self.source = source
 
+    def create_data_frame (header, func, entries):
+
+        frame = pd.DataFrame (columns=header, index=list (range (len (entries))))
+
+        count = 0
+        for entry in entries:
+            frame.loc[count] = func (entry)
+            count += 1
+
+        return frame
 
 
 #--------------------------------------------------------------------------
@@ -131,17 +141,13 @@ class CoinEntry (Entry):
 
 
     #
-    # Add entry to dataframe
+    # Create data frame for displaying the given entries
     #
-    # @param frame Data frame to add entry to or 'None' if an appropriate frame should be created
-    #
-    def add_to_dataframe (self, frame):
-        if frame is None:
-            frame = pd.DataFrame (columns=['timestamp', 'id', 'source', 'course', 'currency'])
-
-        frame.loc[len (frame)] = [pd.Timestamp (time.ctime (self.timestamp)), self.id, self.source, self.course, self.currency]
-
-        return frame
+    @staticmethod
+    def create_data_frame (entries):
+        return Entry.create_data_frame (['timestamp', 'id', 'source', 'course', 'currency'],
+                                        lambda entry: [pd.Timestamp (time.ctime (entry.timestamp)), entry.id, entry.source, entry.course, entry.currency],
+                                        entries)
 
     def __repr__ (self):
         text = 'CoinEntry ('
@@ -220,17 +226,13 @@ class CurrencyEntry (Entry):
         return [CurrencyEntry (*row[1:]) for row in cursor.execute (command)]
 
     #
-    # Add entry to dataframe
+    # Create data frame for displaying the given entries
     #
-    # @param frame Data frame to add entry to or 'None' if an appropriate frame should be created
-    #
-    def add_to_dataframe (self, frame):
-        if frame is None:
-            frame = pd.DataFrame (columns=['timestamp', 'id', 'course'])
-
-        frame.loc[len (frame)] = [pd.Timestamp (time.ctime (self.timestamp)), self.id, self.course]
-
-        return frame
+    @staticmethod
+    def create_data_frame (entries):
+        return Entry.create_data_frame (['timestamp', 'id', 'course'],
+                                        lambda entry: [pd.Timestamp (time.ctime (entry.timestamp)), entry.id, entry.course],
+                                        entries)
 
     def __repr__ (self):
         text = 'CurrencyEntry ('
@@ -308,17 +310,12 @@ class StockEntry (Entry):
 
 
     #
-    # Add entry to dataframe
+    # Create data frame for displaying the given entries
     #
-    # @param frame Data frame to add entry to or 'None' if an appropriate frame should be created
-    #
-    def add_to_dataframe (self, frame):
-        if frame is None:
-            frame = pd.DataFrame (columns=['timestamp', 'id', 'course'])
-
-        frame.loc[len (frame)] = [pd.Timestamp (time.ctime (self.timestamp)), self.id, self.course]
-
-        return frame
+    def create_to_data_frame (entries):
+        return Entry.create_data_frame (['timestamp', 'id', 'course'],
+                                        lambda entry:  [pd.Timestamp (time.ctime (entry.timestamp)), entry.id, entry.course],
+                                        entries)
 
     def __repr__ (self):
         text = 'StockEntry ('
@@ -404,20 +401,15 @@ class NewsEntry (Entry):
         return [NewsEntry (*row[1:]) for row in cursor.execute (command)]
 
     #
-    # Add entry to dataframe
+    # Create data frame for displaying the given entries
     #
-    # @param frame Data frame to add entry to or 'None' if an appropriate frame should be created
-    #
-    def add_to_dataframe (self, frame):
-        if frame is None:
-            frame = pd.DataFrame (columns=['timestamp', 'id', 'text', 'shares', 'likes'])
+    def create_data_frame (entries):
 
-        shares = self.shares if self.shares is not None else '-'
-        likes = self.likes if self.likes is not None else '-'
-
-        frame.loc[len (frame)] = [pd.Timestamp (time.ctime (self.timestamp)), self.id, self.text, shares, likes]
-
-        return frame
+        return Entry.create_data_frame (['timestamp', 'id', 'text', 'shares', 'likes'],
+                                        lambda entry: [pd.Timestamp (time.ctime (entry.timestamp)), entry.id, entry.text,
+                                                       entry.shares if entry.shares is not None else '-',
+                                                       entry.likes if entry.likes is not None else '-'],
+                                        entries)
 
     def __repr__ (self):
 
@@ -521,17 +513,13 @@ class EncryptedEntry (Entry):
 
 
     #
-    # Add entry to dataframe
+    # Create data frame for displaying the given entries
     #
-    # @param frame Data frame to add entry to or 'None' if an appropriate frame should be created
-    #
-    def add_to_dataframe (self, frame):
-        if frame is None:
-            frame = pd.DataFrame (columns=['timestamp', 'id', 'text'])
+    def create_data_frame (entries):
 
-        frame.loc[len (frame)] = [pd.Timestamp (time.ctime (self.timestamp)), self.id, self.text]
-
-        return frame
+        return Entry.create_data_frame (['timestamp', 'id', 'text'],
+                                        lambda entry: [pd.Timestamp (time.ctime (entry.timestamp)), entry.id, entry.text],
+                                        entries)
 
     def __repr__ (self):
 
@@ -775,30 +763,25 @@ def database_list_table (args):
 
     database = Database (args.database, args.password)
 
-    def print_as_frame (title, entries):
+    def print_frame (title, frame):
 
-        frame = None
-        for entry in entries:
-            frame = entry.add_to_dataframe (frame)
+        pd.set_option ('display.width', 256)
+        pd.set_option ('display.max_rows', len (frame))
 
-        if frame is not None:
-            pd.set_option ('display.width', 256)
-            pd.set_option ('display.max_rows', len (frame))
-
-            print (title)
-            print ('-' * len (title))
-            print (frame)
+        print (title)
+        print ('-' * len (title))
+        print (frame)
 
     if args.list == 'currencies' or args.list == 'all':
-        print_as_frame ('Currencies', database.get_entries (CurrencyEntry.ID))
+        print_frame ('Currencies', CurrencyEntry.create_data_frame (database.get_entries (CurrencyEntry.ID)))
     if args.list == 'coins' or args.list == 'all':
-        print_as_frame ('Coins', database.get_entries (CoinEntry.ID))
+        print_frame ('Coins', CoinEntry.create_data_frame (database.get_entries (CoinEntry.ID)))
     if args.list == 'stock' or args.list == 'all':
-        print_as_frame ('Stock', database.get_entries (StockEntry.ID))
+        print_frame ('Stock', StockEntry.create_data_frame (database.get_entries (StockEntry.ID)))
     if args.list == 'news' or args.list == 'all':
-        print_as_frame ('News', database.get_entries (NewsEntry.ID))
+        print_frame ('News', NewsEntry.create_data_frame (database.get_entries (NewsEntry.ID)))
     if args.list == 'encrypted' or args.list == 'all':
-        print_as_frame ('Encrypted', database.get_entries (EncryptedEntry.ID))
+        print_frame ('Encrypted', EncryptedEntry.create_data_frame (database.get_entries (EncryptedEntry.ID)))
 
 #
 # Print database summary
