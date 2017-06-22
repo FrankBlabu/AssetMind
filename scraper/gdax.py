@@ -14,16 +14,17 @@ import sys
 import time
 import unittest
 
+from scraper.scraper import Scraper
 from database.database import Database
 from database.database import CoinEntry
 
 #--------------------------------------------------------------------------
 # Scraper adding data extracted from GDAX to the database
 #
-class GDAXScraper:
+class GDAXScraper (Scraper):
 
     def __init__ (self):
-        pass
+        super ().__init__ ('GDAX')
 
     #
     # Scrape available information out of the GDAX API

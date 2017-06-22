@@ -14,16 +14,17 @@ import api.cryptocompare
 
 from database.database import Database
 from database.database import CoinEntry
+from scraper.scraper import Scraper
 
 #--------------------------------------------------------------------------
 # Scraper adding data extracted from Cryptocompare to the database
 #
-class CryptoCompareScraper:
+class CryptoCompareScraper (Scraper):
 
     selected_coins = sorted (['ETH', 'ETC', 'BTC', 'XMR', 'XRP', 'LTC', 'ZEC', 'DASH'])
 
     def __init__ (self):
-        pass
+        super ().__init__ ('CryptoCompare')
 
     #
     # Scrape available information out of the GDAX API

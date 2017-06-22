@@ -1,0 +1,13 @@
+syntax: glob
+
+.hg
+.metadata
+.pydevproject
+__pycache__
+*~
+RemoteSystemTempFiles
+*.hdf5
+*.pyc
+.project
+.directory
+log

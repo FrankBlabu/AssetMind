@@ -14,15 +14,19 @@ import urllib
 
 import api.poloniex
 
+from scraper.scraper import Scraper
 from database.database import Database
 from database.database import CoinEntry
 
 #--------------------------------------------------------------------------
 # Scraper adding data extracted from Poloniex to the database
 #
-class PoloniexScraper:
+class PoloniexScraper (Scraper):
 
     def __init__ (self, api_key=None, secret=None):
+
+        super ().__init__ ('Poloniex')
+
         self.api_key = api_key
         self.secret  = secret
 

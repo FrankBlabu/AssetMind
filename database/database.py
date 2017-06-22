@@ -100,7 +100,7 @@ class CoinEntry (Entry):
     #
     # Insert this entry into a database
     #
-    def insert_into_database (self, cursor):
+    def insert_into_database (self, cursor, password):
         command = 'INSERT INTO {0} '.format (CoinEntry.ID)
         command += '(hash, timestamp, id, source, course, currency) '
         command += 'values (?, ?, ?, ?, ?, ?)'
@@ -178,7 +178,7 @@ class CurrencyEntry (Entry):
     #
     # Insert this entry into a database
     #
-    def insert_into_database (self, cursor):
+    def insert_into_database (self, cursor, password):
         command = 'INSERT INTO {0} '.format (CurrencyEntry.ID)
         command += '(hash, timestamp, id, course) '
         command += 'values (?, ?, ?, ?)'
@@ -252,7 +252,7 @@ class StockEntry (Entry):
     #
     # Insert this entry into a database
     #
-    def insert_into_database (self, cursor):
+    def insert_into_database (self, cursor, password):
         command = 'INSERT INTO {0} '.format (StockEntry.ID)
         command += '(hash, timestamp, id, course) '
         command += 'values (?, ?, ?, ?)'
@@ -333,7 +333,7 @@ class NewsEntry (Entry):
     #
     # Insert this entry into a database
     #
-    def insert_into_database (self, cursor):
+    def insert_into_database (self, cursor, password):
         command = 'INSERT INTO {0} '.format (NewsEntry.ID)
         command += '(hash, timestamp, id, text, shares, likes) '
         command += 'values (?, ?, ?, ?, ?, ?)'
@@ -391,27 +391,17 @@ class EncryptedEntry (Entry):
     # Initialize entry
     #
     # @param timestamp Event timestamp in UTC unix epoch seconds
+    # @param id        Id for this entry
+    # @param text      Unencrypted text to keep
     #
-    def __init__ (self, timestamp, id, text=None):
+    def __init__ (self, timestamp, id, text):
 
         super ().__init__ (timestamp, id, None)
 
         assert len (id) <= 64
-        assert text is None or isinstance (text, str)
+        assert isinstance (text, str)
 
         self.text = text
-
-    def set_text (self, text, password):
-
-        assert isinstance (text, str)
-        assert isinstance (password, str)
-
-        encryption = Encryption ()
-        self.text = encryption.encrypt (text, password)
-
-    def get_text (self, password):
-        encryption = Encryption ()
-        return encryption.decrypt (self.text, password)
 
     #
     # Add matching table to database
@@ -431,7 +421,7 @@ class EncryptedEntry (Entry):
     #
     # Insert this entry into a database
     #
-    def insert_into_database (self, cursor):
+    def insert_into_database (self, cursor, password):
         command = 'INSERT INTO {0} '.format (EncryptedEntry.ID)
         command += '(hash, timestamp, id, text) '
         command += 'values (?, ?, ?, ?)'
@@ -480,10 +470,12 @@ class Database:
     #
     # Constructor
     #
-    # @param file Location of the database in the file system
+    # @param file     Location of the database in the file system
+    # @param password Password to access encrypted database entries
     #
-    def __init__ (self, file):
+    def __init__ (self, file, password=None):
         self.file = file
+        self.password = password
         self.connection = sqlite3.connect (file)
         self.cursor = self.connection.cursor ()
 
@@ -512,7 +504,14 @@ class Database:
         command = 'DELETE FROM {table} WHERE hash="{hash}"'.format (table=entry.ID, hash=entry.hash)
         self.cursor.execute (command)
 
-        entry.insert_into_database (self.cursor)
+        if isinstance (entry, EncrpytedEntry):
+            if self.password is None or len (self.password) == 0:
+                raise RuntimeError ('Access to encrypted entries requires password to be provided.')
+
+            encryption = Encryption ()
+            entry.text = encryption.encrypt (entry.text, self.password)
+
+        entry.insert_into_database (self.cursor, self.password)
 
     #
     # Commit changes to the database file
@@ -525,6 +524,8 @@ class Database:
     #
     def get_entries (self, table, id=None):
 
+        encryption = Encryption ()
+
         command = 'SELECT * FROM {0}'.format (table)
 
         if id is not None:
@@ -533,16 +534,25 @@ class Database:
         entries = []
 
         for row in self.cursor.execute (command):
+
             if table == CoinEntry.ID:
                 entries.append (CoinEntry (*row[1:]))
+
             elif table == CurrencyEntry.ID:
                 entries.append (CurrencyEntry (*row[1:]))
+
             elif table == StockEntry.ID:
                 entries.append (StockEntry (*row[1:]))
+
             elif table == NewsEntry.ID:
                 entries.append (NewsEntry (*row[1:]))
+
             elif table == EncryptedEntry.ID:
-                entries.append (EncryptedEntry (*row[1:]))
+                if self.password is not None and len (self.password) > 0:
+                    entry = EncryptedEntry (*row[1:])
+                    entry.text = encryption.decrypt (entry.text, self.password)
+                    entries.append (entry)
+
             else:
                 raise RuntimeError ('Unknown database table type')
 
@@ -651,7 +661,7 @@ class TestDatabase (unittest.TestCase):
         #
         # Create database
         #
-        database = Database (':memory:')
+        database = Database (':memory:', 'secret')
         database.create ()
 
         #
@@ -702,14 +712,15 @@ def database_create (args):
     if os.path.exists (args.database):
         raise RuntimeError ('Database file {0} already exists.'.format (args.database))
 
-    database = Database (args.database)
+    database = Database (args.database, args.password)
     database.create ()
 
 #
 # List content of a database table
 #
 def database_list_table (args):
-    database = Database (args.database)
+
+    database = Database (args.database, args.password)
 
     def print_as_frame (title, entries):
 
@@ -741,7 +752,7 @@ def database_list_table (args):
 #
 def database_summary (args):
 
-    database = Database (args.database)
+    database = Database (args.database, args.password)
 
     def to_time (timestamp):
         return pd.Timestamp (time.strftime ('%Y-%m-%d', time.localtime (timestamp)))
@@ -779,10 +790,11 @@ if __name__ == '__main__':
     #
     parser = argparse.ArgumentParser ()
 
-    parser.add_argument ('-c', '--create',  action='store_true', default=False, help='Create new database')
-    parser.add_argument ('-l', '--list',    action='store', choices=['currencies', 'coins', 'stock', 'news', 'encrypted', 'all'], help='List database content')
-    parser.add_argument ('-s', '--summary', action='store_true', default=False, help='Print database summary')
-    parser.add_argument ('database',        type=str, default=None, help='Database file')
+    parser.add_argument ('-c', '--create',   action='store_true', default=False, help='Create new database')
+    parser.add_argument ('-l', '--list',     action='store', choices=['currencies', 'coins', 'stock', 'news', 'encrypted', 'all'], help='List database content')
+    parser.add_argument ('-s', '--summary',  action='store_true', default=False, help='Print database summary')
+    parser.add_argument ('-p', '--password', type=str, default=None, help='Passwort for database encryption')
+    parser.add_argument ('database',         type=str, default=None, help='Database file')
 
     args = parser.parse_args ()
 

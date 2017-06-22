@@ -22,17 +22,20 @@ import time
 from database.database import Database
 from database.database import EncryptedEntry
 from database.database import NewsEntry
+from scraper.scraper import Scraper
 
 
 #----------------------------------------------------------------------------
 # Scraper for twitter data
 #
-class TwitterScraper:
+class TwitterScraper (Scraper):
 
     APP_NAME = 'AssetMind'
     DATABASE_ID = 'twitter'
 
     def __init__ (self):
+
+        super ().__init__ ('Twitter')
 
         emoticons_str = r"""
             (?:
@@ -121,8 +124,6 @@ class TwitterScraper:
 
         tweets = []
 
-        print (query.keys ())
-
         for q in query['statuses']:
 
             tweet = self.to_string (q['text'])
@@ -137,19 +138,28 @@ class TwitterScraper:
     #
     # Retrieve OAuth credentials from the database
     #
-    def get_credentials (self, args):
+    # @param database Database containing the credentials
+    #
+    def get_credentials (self, database):
 
-        assert args.database is not None
-        assert args.database != ':memory:'
-        assert isinstance (args.password, str)
-        assert len (args.password) >= 4
-
-        database = Database (args.database)
+        assert database is not None
+        assert database.password is not None
 
         entry = database.get_entries (EncryptedEntry.ID, TwitterScraper.DATABASE_ID)
         assert len (entry) == 1
 
-        return json.loads (entry[0].get_text (args.password))
+        return json.loads (entry[0].get_text (database.password))
+
+    #
+    # Run scraper for acquiring a set of entries
+    #
+    # @param database Database to be filled
+    # @param password Password for accessing the protected database entries
+    # @param start    Start timestamp in UNIX epoch format or 'None' for maximum coverage
+    # @param end      End timestamp in UNIX epoch format  or 'None' for maximum coverage
+    #
+    def run (self, database, password, start, end):
+        pass
 
     #
     # Tokenize a tweet content
@@ -188,21 +198,29 @@ if __name__ == '__main__':
         parser.add_argument ('-a', '--authenticate', action='store_true', default=False, help='Create authentification credentials')
         parser.add_argument ('-c', '--credentials', action='store_true', default=False, help='Show authentification credential set')
         parser.add_argument ('-s', '--summary', action='store_true', default=False, help='Tweet summary')
-        parser.add_argument ('-p', '--password', type=str, default=None, help='Passwort for database encryption')
+        parser.add_argument ('-p', '--password', type=str, required=True, help='Passwort for database encryption')
         parser.add_argument ('database', type=str, default=':memory:', help='Database file')
 
         args = parser.parse_args ()
+
+        assert args.database is not None
+        assert args.database != ':memory:'
+        assert isinstance (args.password, str)
+        assert len (args.password) >= 4
+
+        database = Database (args.database, args.password)
+
         scraper = TwitterScraper ()
 
         if args.authenticate:
-            scraper.authenticate (args)
+            scraper.authenticate (database)
 
         elif args.credentials:
-            print (scraper.get_credentials (args))
+            print (scraper.get_credentials (database))
 
         elif args.summary:
-            scraper.summary (args)
+            scraper.summary (database)
 
         else:
-            for tweet in scraper.get_tweets (args):
+            for tweet in scraper.get_tweets (database):
                 print (tweet)

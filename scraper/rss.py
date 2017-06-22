@@ -11,16 +11,17 @@ import feedparser
 import sys
 import time
 
+from scraper.scraper import Scraper
 from database.database import Database
 from database.database import NewsEntry
 
 #--------------------------------------------------------------------------
 # Scraper adding data extracted from RSS feeds to the database
 #
-class RSSScraper:
+class RSSScraper (Scraper):
 
     def __init__ (self):
-        pass
+        super ().__init__ ('RSS generic')
 
     def execute (self, database, args):
 
