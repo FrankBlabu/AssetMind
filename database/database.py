@@ -300,15 +300,19 @@ class NewsEntry (Entry):
     #
     # @param timestamp Event timestamp in UTC unix epoch seconds
     #
-    def __init__ (self, timestamp, id, text):
+    def __init__ (self, timestamp, id, text, shares, likes):
 
         super ().__init__ (timestamp, id, None)
 
         assert len (id) <= 8
         assert isinstance (text, str)
         assert len (text) < (1 << 16)
+        assert isinstance (shares, int) or shares is None
+        assert isinstance (likes, int) or lines is None
 
         self.text = text
+        self.shares = shares if shares is None or shares >= 0 else None
+        self.likes = likes if likes is None or likes >= 0 else None
 
     #
     # Add matching table to database
@@ -319,7 +323,9 @@ class NewsEntry (Entry):
         command += 'hash VARCHAR (64), '
         command += 'timestamp LONG NOT NULL, '
         command += 'id VARCHAR (8), '
-        command += 'text MEMO'
+        command += 'text MEMO, '
+        command += 'shares INT, '
+        command += 'likes INT'
         command += ')'
 
         cursor.execute (command)
@@ -329,14 +335,16 @@ class NewsEntry (Entry):
     #
     def insert_into_database (self, cursor):
         command = 'INSERT INTO {0} '.format (NewsEntry.ID)
-        command += '(hash, timestamp, id, text) '
-        command += 'values (?, ?, ?, ?)'
+        command += '(hash, timestamp, id, text, shares, likes) '
+        command += 'values (?, ?, ?, ?, ?, ?)'
 
         params = []
         params.append (self.hash)
         params.append (self.timestamp)
         params.append (self.id)
         params.append (self.text)
+        params.append (self.shares if shares is not None else -1)
+        params.append (self.likes if shares is not None else -1)
 
         cursor.execute (command, params)
 
@@ -347,9 +355,12 @@ class NewsEntry (Entry):
     #
     def add_to_dataframe (self, frame):
         if frame is None:
-            frame = pd.DataFrame (columns=['timestamp', 'id', 'text'])
+            frame = pd.DataFrame (columns=['timestamp', 'id', 'text', 'shares', 'likes'])
 
-        frame.loc[len (frame)] = [pd.Timestamp (time.ctime (self.timestamp)), self.id, self.text]
+        shares = self.shares if self.shares is not None else '-'
+        likes = self.likes if self.likes is not None else '-'
+
+        frame.loc[len (frame)] = [pd.Timestamp (time.ctime (self.timestamp)), self.id, self.text, shares, likes]
 
         return frame
 
@@ -362,7 +373,9 @@ class NewsEntry (Entry):
         text = 'NewsEntry ('
         text += 'timestamp={0}, '.format (self.timestamp)
         text += 'id={0}, '.format (self.id)
-        text += 'text=\'{0}\''.format (content)
+        text += 'text=\'{0}\', '.format (content)
+        text += 'shares={0}, '.format (self.shares)
+        text += 'likes={0}'.format (self.likes)
         text += ')'
 
         return text
@@ -590,9 +603,9 @@ class TestDatabase (unittest.TestCase):
         # Setup some news entries
         #
         news_entries = []
-        news_entries.append (NewsEntry (1234, 'coindesk', 'Well, some went up, some went down.'))
-        news_entries.append (NewsEntry (1242, 'btcinfo',  'Ethereum is the future of something whatever.'))
-        news_entries.append (NewsEntry (1234, 'fb_eth',   'Hey, should I but, sell, or go to the lavatory ?'))
+        news_entries.append (NewsEntry (1234, 'coindesk', 'Well, some went up, some went down.', 1, 2))
+        news_entries.append (NewsEntry (1242, 'btcinfo',  'Ethereum is the future of something whatever.', 40, 5))
+        news_entries.append (NewsEntry (1234, 'fb_eth',   'Hey, should I but, sell, or go to the lavatory ?', None, None))
 
         for entry in news_entries:
             database.add (entry)

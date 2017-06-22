@@ -11,6 +11,7 @@
 
 import argparse
 import codecs
+import dateutil.parser
 import nltk.corpus
 import re
 import json
@@ -20,6 +21,7 @@ import time
 
 from database.database import Database
 from database.database import EncryptedEntry
+from database.database import NewsEntry
 
 
 #----------------------------------------------------------------------------
@@ -118,12 +120,17 @@ class TwitterScraper:
         query = server.search.tweets (q='ethereum blockchain bitcoin', count=100)
 
         tweets = []
+
+        print (query.keys ())
+
         for q in query['statuses']:
+
             tweet = self.to_string (q['text'])
             tweet = self.tokenize (tweet)
             tweet = [token if self.emoticon_regexp.search (token) else token.lower () for token in tweet]
 
-            tweets.append (tweet)
+            tweets.append (NewsEntry (int (dateutil.parser.parse (q['created_at']).timestamp ()),
+                                      'twitter', json.dumps (tweet), q['retweet_count'], q['favorite_count']))
 
         return tweets
 
