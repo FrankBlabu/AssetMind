@@ -46,15 +46,14 @@ class TwitterScraper (Scraper):
 
         regex_str = [
             emoticons_str,
-            r'<[^>]+>', # HTML tags
-            r'(?:@[\w_]+)', # @-mentions
-            r"(?:\#+[\w_]+[\w\'_\-]*[\w_]+)", # hash-tags
-            r'http[s]?://(?:[a-z]|[0-9]|[$-_@.&amp;+]|[!*\(\),]|(?:%[0-9a-f][0-9a-f]))+', # URLs
-
-            r'(?:(?:\d+,?)+(?:\.?\d+)?)', # numbers
-            r"(?:[a-z][a-z'\-_]+[a-z])", # words with - and '
-            r'(?:[\w_]+)', # other words
-            r'(?:\S)' # anything else
+            r'<[^>]+>',  # HTML tags
+            r'(?:@[\w_]+)',  # @-mentions
+            r"(?:\#+[\w_]+[\w\'_\-]*[\w_]+)",  # hash-tags
+            r'http[s]?://(?:[a-z]|[0-9]|[$-_@.&amp;+]|[!*\(\),]|(?:%[0-9a-f][0-9a-f]))+',  # URLs
+            r'(?:(?:\d+,?)+(?:\.?\d+)?)',  # numbers
+            r"(?:[a-z][a-z'\-_]+[a-z])",  # words with - and '
+            r'(?:[\w_]+)',  # other words
+            r'(?:\S)'  # anything else
         ]
 
         self.tokens_regexp = re.compile (r'(' + '|'.join (regex_str) + ')', re.VERBOSE | re.IGNORECASE)
@@ -67,16 +66,11 @@ class TwitterScraper (Scraper):
     # This function must be performed once to write the neccesary parameters
     # into the database
     #
-    def authenticate (self, args):
+    def authenticate (self, database):
 
-        assert args.database is not None
-        assert isinstance (args.password, str)
-        assert len (args.password) >= 4
-
-        database = Database (args.database)
-
-        if args.database == ':memory:':
-            database.create ()
+        assert database is not None
+        assert isinstance (database.password, str)
+        assert len (database.password) >= 4
 
         consumer_key = input ('Consumer key: ')
         consumer_secret = input ('Consumer secret: ')
@@ -89,10 +83,7 @@ class TwitterScraper (Scraper):
         data['access_key'] = access_key
         data['access_secret'] = access_secret
 
-        entry = EncryptedEntry (int (round (time.time ())), TwitterScraper.DATABASE_ID)
-        entry.set_text (json.dumps (data), args.password)
-
-        database.add (entry)
+        database.add (EncryptedEntry (int (round (time.time ())), TwitterScraper.DATABASE_ID, json.dumps (data)))
         database.commit ()
 
     #
@@ -148,7 +139,7 @@ class TwitterScraper (Scraper):
         entry = database.get_entries (EncryptedEntry.ID, TwitterScraper.DATABASE_ID)
         assert len (entry) == 1
 
-        return json.loads (entry[0].get_text (database.password))
+        return json.loads (entry[0].text)
 
     #
     # Run scraper for acquiring a set of entries
@@ -168,7 +159,7 @@ class TwitterScraper (Scraper):
 
         terms = self.tokens_regexp.findall (text)
 
-        stop = nltk.corpus.stopwords.words ('english') + list (string.punctuation)+ ['rt', 'via']
+        stop = nltk.corpus.stopwords.words ('english') + list (string.punctuation) + ['rt', 'via']
         terms = [term for term in terms if term not in stop and not term.startswith ('http:') and not term.startswith ('https:')]
 
         return terms
@@ -203,12 +194,12 @@ if __name__ == '__main__':
 
         args = parser.parse_args ()
 
-        assert args.database is not None
-        assert args.database != ':memory:'
         assert isinstance (args.password, str)
         assert len (args.password) >= 4
 
         database = Database (args.database, args.password)
+        if args.database == ':memory:':
+            database.create ()
 
         scraper = TwitterScraper ()
 
