@@ -560,6 +560,9 @@ class EncryptedEntry (Entry):
 #
 class Database:
 
+    #
+    # Entry types the database supports
+    #
     types = [CoinEntry, CurrencyEntry, StockEntry, NewsEntry, EncryptedEntry]
 
     #

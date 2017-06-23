@@ -31,8 +31,9 @@ class CryptoCompareScraper (Scraper):
     #
     # @param database Database to be filled
     # @param start    Start timestamp in UNIX epoch format or 'None' for maximum coverage
+    # @param log      Callback for logging outputs
     #
-    def run (self, database, start):
+    def run (self, database, start, log):
         pass
 
     #

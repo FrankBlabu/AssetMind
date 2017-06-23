@@ -101,32 +101,6 @@ class TwitterScraper (Scraper):
         print (query['search_metadata'])
 
     #
-    # Get tweets matching keywords
-    #
-    def get_tweets (self, args):
-        credentials = self.get_credentials (args)
-
-        server = twitter.Twitter (auth=twitter.OAuth (credentials['access_key'],
-                                                      credentials['access_secret'],
-                                                      credentials['consumer_key'],
-                                                      credentials['consumer_secret']))
-
-        query = server.search.tweets (q='ethereum blockchain bitcoin', count=100)
-
-        tweets = []
-
-        for q in query['statuses']:
-
-            tweet = self.to_string (q['text'])
-            tweet = self.tokenize (tweet)
-            tweet = [token if self.emoticon_regexp.search (token) else token.lower () for token in tweet]
-
-            tweets.append (NewsEntry (int (dateutil.parser.parse (q['created_at']).timestamp ()),
-                                      'twitter', json.dumps (tweet), q['retweet_count'], q['favorite_count']))
-
-        return tweets
-
-    #
     # Retrieve OAuth credentials from the database
     #
     # @param database Database containing the credentials
@@ -146,9 +120,30 @@ class TwitterScraper (Scraper):
     #
     # @param database Database to be filled
     # @param start    Start timestamp in UNIX epoch format or 'None' for maximum coverage
+    # @param log      Callback for logging outputs
     #
-    def run (self, database, start):
-        pass
+    def run (self, database, start, log):
+        credentials = self.get_credentials (database)
+
+        server = twitter.Twitter (auth=twitter.OAuth (credentials['access_key'],
+                                                      credentials['access_secret'],
+                                                      credentials['consumer_key'],
+                                                      credentials['consumer_secret']))
+
+        query = server.search.tweets (q='ethereum blockchain bitcoin', count=100)
+
+        tweets = []
+
+        for q in query['statuses']:
+
+            tweet = self.to_string (q['text'])
+            tweet = self.tokenize (tweet)
+            tweet = [token if self.emoticon_regexp.search (token) else token.lower () for token in tweet]
+
+            database.add (NewsEntry (int (dateutil.parser.parse (q['created_at']).timestamp ()),
+                                     'twitter', json.dumps (tweet), q['retweet_count'], q['favorite_count']))
+
+        database.commit ()
 
     #
     # Tokenize a tweet content
@@ -188,7 +183,7 @@ if __name__ == '__main__':
         parser.add_argument ('-c', '--credentials', action='store_true', default=False, help='Show authentification credential set')
         parser.add_argument ('-s', '--summary', action='store_true', default=False, help='Tweet summary')
         parser.add_argument ('-p', '--password', type=str, required=True, help='Passwort for database encryption')
-        parser.add_argument ('database', type=str, default=':memory:', help='Database file')
+        parser.add_argument ('database', type=str, nargs='?', default=':memory:', help='Database file')
 
         args = parser.parse_args ()
 
@@ -211,5 +206,4 @@ if __name__ == '__main__':
             scraper.summary (database)
 
         else:
-            for tweet in scraper.get_tweets (database):
-                print (tweet)
+            scraper.run (database, None, lambda message: print (message))

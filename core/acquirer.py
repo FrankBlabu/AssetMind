@@ -6,6 +6,7 @@
 #
 
 import argparse
+import dateutil.parser
 
 import scraper.cryptocompare
 import scraper.twitter
@@ -13,6 +14,12 @@ import scraper.twitter
 from database.database import Database
 
 class Acquirer:
+
+    #
+    # Earliest date captured in the database. The scrapers will try to gather as much data as
+    # possible starting from this point in time on to the current time.
+    #
+    DATABASE_START_DATE = '2015-1-1'
 
     def __init__ (self):
         self.sources = []
@@ -28,10 +35,15 @@ class Acquirer:
     #
     # This function will try to fill the database as complete as possible
     #
-    def run (self, args):
+    def run (self, database):
+
+        start = dateutil.parser.parse (Acquirer.DATABASE_START_DATE)
+
+        print ('Filling/completing database from the {date} on'.format (date=start.isoformat (' ')))
 
         for source in self.sources:
-            source.run (None, None)
+            print ('Running {scraper}...'.format (scraper=type (source).__name__))
+            source.run (database, start.timestamp (), lambda message: print ('  ' + message))
 
 
 if __name__ == '__main__':
@@ -45,9 +57,13 @@ if __name__ == '__main__':
 
     args = parser.parse_args ()
 
+    database = Database (args.database, args.password)
+    if args.database == ':memory:':
+        database.create ()
+
     acquirer = Acquirer ()
 
     acquirer.add_source (scraper.cryptocompare.CryptoCompareScraper ())
     acquirer.add_source (scraper.twitter.TwitterScraper ())
 
-    acquirer.run (args)
+    acquirer.run (database)
