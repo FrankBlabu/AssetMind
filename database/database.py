@@ -13,6 +13,7 @@ import sqlite3
 import time
 import unittest
 
+from abc import ABC, abstractmethod
 from database.encryption import Encryption
 
 #--------------------------------------------------------------------------
@@ -23,7 +24,7 @@ from database.encryption import Encryption
 # database. This way the same source of information can be read and inserted
 # multiple times without leading to duplicate database entries.
 #
-class Entry:
+class Entry (ABC):
 
     #
     # Constructor
@@ -63,6 +64,26 @@ class Entry:
         return frame
 
 
+    @staticmethod
+    @abstractmethod
+    def add_table_to_database (database):
+        pass
+
+    @abstractmethod
+    def insert_into_database (self, database):
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def read_from_database (database, id):
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def create_data_frame (entries):
+        pass
+
+
 #--------------------------------------------------------------------------
 # Container representing a single course entry for a single coin
 #
@@ -92,7 +113,7 @@ class CoinEntry (Entry):
     # Add matching table to database
     #
     @staticmethod
-    def add_table_to_database (cursor):
+    def add_table_to_database (database):
 
         #
         # Coin courses table
@@ -106,12 +127,12 @@ class CoinEntry (Entry):
         command += 'currency VARCHAR (3)'
         command += ')'
 
-        cursor.execute (command)
+        database.cursor.execute (command)
 
     #
     # Insert this entry into a database
     #
-    def insert_into_database (self, cursor, password):
+    def insert_into_database (self, database):
         command = 'INSERT INTO {0} '.format (CoinEntry.ID)
         command += '(hash, timestamp, id, source, course, currency) '
         command += 'values (?, ?, ?, ?, ?, ?)'
@@ -124,20 +145,20 @@ class CoinEntry (Entry):
         params.append (self.course)
         params.append (self.currency)
 
-        cursor.execute (command, params)
+        database.cursor.execute (command, params)
 
     #
     # Read this entry from database
     #
     @staticmethod
-    def read_from_database (cursor, id, password):
+    def read_from_database (database, id):
 
         command = 'SELECT * FROM {0}'.format (CoinEntry.ID)
 
         if id is not None:
             command += ' WHERE id=\'{0}\''.format (id)
 
-        return [CoinEntry (*row[1:]) for row in cursor.execute (command)]
+        return [CoinEntry (*row[1:]) for row in database.cursor.execute (command)]
 
 
     #
@@ -146,7 +167,8 @@ class CoinEntry (Entry):
     @staticmethod
     def create_data_frame (entries):
         return Entry.create_data_frame (['timestamp', 'id', 'source', 'course', 'currency'],
-                                        lambda entry: [pd.Timestamp (time.ctime (entry.timestamp)), entry.id, entry.source, entry.course, entry.currency],
+                                        lambda entry: [pd.Timestamp (time.ctime (entry.timestamp)), entry.id,
+                                                       entry.source, entry.course, entry.currency],
                                         entries)
 
     def __repr__ (self):
@@ -185,7 +207,7 @@ class CurrencyEntry (Entry):
     # Add matching table to database
     #
     @staticmethod
-    def add_table_to_database (cursor):
+    def add_table_to_database (database):
 
         command = 'CREATE TABLE {0} ('.format (CurrencyEntry.ID)
         command += 'hash VARCHAR (64), '
@@ -194,12 +216,12 @@ class CurrencyEntry (Entry):
         command += 'course REAL'
         command += ')'
 
-        cursor.execute (command)
+        database.cursor.execute (command)
 
     #
     # Insert this entry into a database
     #
-    def insert_into_database (self, cursor, password):
+    def insert_into_database (self, database):
         command = 'INSERT INTO {0} '.format (CurrencyEntry.ID)
         command += '(hash, timestamp, id, course) '
         command += 'values (?, ?, ?, ?)'
@@ -210,20 +232,20 @@ class CurrencyEntry (Entry):
         params.append (self.id)
         params.append (self.course)
 
-        cursor.execute (command, params)
+        database.cursor.execute (command, params)
 
     #
     # Read this entry from database
     #
     @staticmethod
-    def read_from_database (cursor, id, password):
+    def read_from_database (database, id):
 
         command = 'SELECT * FROM {0}'.format (CurrencyEntry.ID)
 
         if id is not None:
             command += ' WHERE id=\'{0}\''.format (id)
 
-        return [CurrencyEntry (*row[1:]) for row in cursor.execute (command)]
+        return [CurrencyEntry (*row[1:]) for row in database.cursor.execute (command)]
 
     #
     # Create data frame for displaying the given entries
@@ -268,7 +290,7 @@ class StockEntry (Entry):
     # Add matching table to database
     #
     @staticmethod
-    def add_table_to_database (cursor):
+    def add_table_to_database (database):
 
         command = 'CREATE TABLE {0} ('.format (StockEntry.ID)
         command += 'hash VARCHAR (64), '
@@ -277,12 +299,12 @@ class StockEntry (Entry):
         command += 'course REAL'
         command += ')'
 
-        cursor.execute (command)
+        database.cursor.execute (command)
 
     #
     # Insert this entry into a database
     #
-    def insert_into_database (self, cursor, password):
+    def insert_into_database (self, database):
         command = 'INSERT INTO {0} '.format (StockEntry.ID)
         command += '(hash, timestamp, id, course) '
         command += 'values (?, ?, ?, ?)'
@@ -293,20 +315,20 @@ class StockEntry (Entry):
         params.append (self.id)
         params.append (self.course)
 
-        cursor.execute (command, params)
+        database.cursor.execute (command, params)
 
     #
     # Read this entry from database
     #
     @staticmethod
-    def read_from_database (cursor, id, password):
+    def read_from_database (database, id):
 
         command = 'SELECT * FROM {0}'.format (StockEntry.ID)
 
         if id is not None:
             command += ' WHERE id=\'{0}\''.format (id)
 
-        return [StockEntry (*row[1:]) for row in cursor.execute (command)]
+        return [StockEntry (*row[1:]) for row in database.cursor.execute (command)]
 
 
     #
@@ -357,7 +379,7 @@ class NewsEntry (Entry):
     # Add matching table to database
     #
     @staticmethod
-    def add_table_to_database (cursor):
+    def add_table_to_database (database):
         command = 'CREATE TABLE {0} ('.format (NewsEntry.ID)
         command += 'hash VARCHAR (64), '
         command += 'timestamp LONG NOT NULL, '
@@ -367,12 +389,12 @@ class NewsEntry (Entry):
         command += 'likes INT'
         command += ')'
 
-        cursor.execute (command)
+        database.cursor.execute (command)
 
     #
     # Insert this entry into a database
     #
-    def insert_into_database (self, cursor, password):
+    def insert_into_database (self, database):
         command = 'INSERT INTO {0} '.format (NewsEntry.ID)
         command += '(hash, timestamp, id, text, shares, likes) '
         command += 'values (?, ?, ?, ?, ?, ?)'
@@ -385,20 +407,20 @@ class NewsEntry (Entry):
         params.append (self.shares if self.shares is not None else -1)
         params.append (self.likes if self.shares is not None else -1)
 
-        cursor.execute (command, params)
+        database.cursor.execute (command, params)
 
     #
     # Read this entry from database
     #
     @staticmethod
-    def read_from_database (cursor, id, password):
+    def read_from_database (database, id):
 
         command = 'SELECT * FROM {0}'.format (NewsEntry.ID)
 
         if id is not None:
             command += ' WHERE id=\'{0}\''.format (id)
 
-        return [NewsEntry (*row[1:]) for row in cursor.execute (command)]
+        return [NewsEntry (*row[1:]) for row in database.cursor.execute (command)]
 
     #
     # Create data frame for displaying the given entries
@@ -454,7 +476,7 @@ class EncryptedEntry (Entry):
     # Add matching table to database
     #
     @staticmethod
-    def add_table_to_database (cursor):
+    def add_table_to_database (database):
 
         command = 'CREATE TABLE {0} ('.format (EncryptedEntry.ID)
         command += 'hash VARCHAR (64), '
@@ -463,15 +485,15 @@ class EncryptedEntry (Entry):
         command += 'text MEMO'
         command += ')'
 
-        cursor.execute (command)
+        database.cursor.execute (command)
 
     #
     # Insert this entry into a database
     #
-    def insert_into_database (self, cursor, password):
+    def insert_into_database (self, database):
 
-        assert isinstance (password, str)
-        assert len (password) >= 4
+        assert isinstance (database.password, str)
+        assert len (database.password) >= 4
 
         command = 'INSERT INTO {0} '.format (EncryptedEntry.ID)
         command += '(hash, timestamp, id, text) '
@@ -483,30 +505,30 @@ class EncryptedEntry (Entry):
         params.append (self.hash)
         params.append (self.timestamp)
         params.append (self.id)
-        params.append (encryption.encrypt (self.text, password))
+        params.append (encryption.encrypt (self.text, database.password))
 
-        cursor.execute (command, params)
+        database.cursor.execute (command, params)
 
     #
     # Read this entry from database
     #
     @staticmethod
-    def read_from_database (cursor, id, password):
+    def read_from_database (database, id):
 
-        assert password is not None
-        assert len (password) >= 4
+        assert database.password is not None
+        assert len (database.password) >= 4
 
         command = 'SELECT * FROM {0}'.format (EncryptedEntry.ID)
 
         if id is not None:
             command += ' WHERE id=\'{0}\''.format (id)
 
-        entries = [EncryptedEntry (*row[1:]) for row in cursor.execute (command)]
+        entries = [EncryptedEntry (*row[1:]) for row in database.cursor.execute (command)]
 
         encryption = Encryption ()
 
         for entry in entries:
-            entry.text = encryption.decrypt (entry.text, password)
+            entry.text = encryption.decrypt (entry.text, database.password)
 
         return entries
 
@@ -554,11 +576,11 @@ class Database:
     #
     def create (self):
 
-        CoinEntry.add_table_to_database (self.cursor)
-        CurrencyEntry.add_table_to_database (self.cursor)
-        StockEntry.add_table_to_database (self.cursor)
-        NewsEntry.add_table_to_database (self.cursor)
-        EncryptedEntry.add_table_to_database (self.cursor)
+        CoinEntry.add_table_to_database (self)
+        CurrencyEntry.add_table_to_database (self)
+        StockEntry.add_table_to_database (self)
+        NewsEntry.add_table_to_database (self)
+        EncryptedEntry.add_table_to_database (self)
 
     #
     # Add entry to the database
@@ -574,7 +596,7 @@ class Database:
         command = 'DELETE FROM {table} WHERE hash="{hash}"'.format (table=entry.ID, hash=entry.hash)
         self.cursor.execute (command)
 
-        entry.insert_into_database (self.cursor, self.password)
+        entry.insert_into_database (self)
 
     #
     # Commit changes to the database file
@@ -588,15 +610,15 @@ class Database:
     def get_entries (self, table, id=None):
 
         if table == CoinEntry.ID:
-            entries = CoinEntry.read_from_database (self.cursor, id, self.password)
+            entries = CoinEntry.read_from_database (self, id)
         elif table == CurrencyEntry.ID:
-            entries = CurrencyEntry.read_from_database (self.cursor, id, self.password)
+            entries = CurrencyEntry.read_from_database (self, id)
         elif table == StockEntry.ID:
-            entries = StockEntry.read_from_database (self.cursor, id, self.password)
+            entries = StockEntry.read_from_database (self, id)
         elif table == NewsEntry.ID:
-            entries = NewsEntry.read_from_database (self.cursor, id, self.password)
+            entries = NewsEntry.read_from_database (self, id)
         elif table == EncryptedEntry.ID:
-            entries = EncryptedEntry.read_from_database (self.cursor, id, self.password)
+            entries = EncryptedEntry.read_from_database (self, id)
         else:
             raise RuntimeError ('Unknown database table type')
 
