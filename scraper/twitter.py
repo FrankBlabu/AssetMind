@@ -145,11 +145,9 @@ class TwitterScraper (Scraper):
     # Run scraper for acquiring a set of entries
     #
     # @param database Database to be filled
-    # @param password Password for accessing the protected database entries
     # @param start    Start timestamp in UNIX epoch format or 'None' for maximum coverage
-    # @param end      End timestamp in UNIX epoch format  or 'None' for maximum coverage
     #
-    def run (self, database, password, start, end):
+    def run (self, database, start):
         pass
 
     #

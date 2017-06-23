@@ -52,7 +52,8 @@ class Entry (ABC):
         self.id = id
         self.source = source
 
-    def create_data_frame (header, func, entries):
+    @staticmethod
+    def fill_data_frame (header, func, entries):
 
         frame = pd.DataFrame (columns=header, index=list (range (len (entries))))
 
@@ -166,7 +167,7 @@ class CoinEntry (Entry):
     #
     @staticmethod
     def create_data_frame (entries):
-        return Entry.create_data_frame (['timestamp', 'id', 'source', 'course', 'currency'],
+        return Entry.fill_data_frame (['timestamp', 'id', 'source', 'course', 'currency'],
                                         lambda entry: [pd.Timestamp (time.ctime (entry.timestamp)), entry.id,
                                                        entry.source, entry.course, entry.currency],
                                         entries)
@@ -252,7 +253,7 @@ class CurrencyEntry (Entry):
     #
     @staticmethod
     def create_data_frame (entries):
-        return Entry.create_data_frame (['timestamp', 'id', 'course'],
+        return Entry.fill_data_frame (['timestamp', 'id', 'course'],
                                         lambda entry: [pd.Timestamp (time.ctime (entry.timestamp)), entry.id, entry.course],
                                         entries)
 
@@ -334,8 +335,8 @@ class StockEntry (Entry):
     #
     # Create data frame for displaying the given entries
     #
-    def create_to_data_frame (entries):
-        return Entry.create_data_frame (['timestamp', 'id', 'course'],
+    def create_data_frame (entries):
+        return Entry.fill_data_frame (['timestamp', 'id', 'course'],
                                         lambda entry:  [pd.Timestamp (time.ctime (entry.timestamp)), entry.id, entry.course],
                                         entries)
 
@@ -427,7 +428,7 @@ class NewsEntry (Entry):
     #
     def create_data_frame (entries):
 
-        return Entry.create_data_frame (['timestamp', 'id', 'text', 'shares', 'likes'],
+        return Entry.fill_data_frame (['timestamp', 'id', 'text', 'shares', 'likes'],
                                         lambda entry: [pd.Timestamp (time.ctime (entry.timestamp)), entry.id, entry.text,
                                                        entry.shares if entry.shares is not None else '-',
                                                        entry.likes if entry.likes is not None else '-'],
@@ -539,7 +540,7 @@ class EncryptedEntry (Entry):
     #
     def create_data_frame (entries):
 
-        return Entry.create_data_frame (['timestamp', 'id', 'text'],
+        return Entry.fill_data_frame (['timestamp', 'id', 'text'],
                                         lambda entry: [pd.Timestamp (time.ctime (entry.timestamp)), entry.id, entry.text],
                                         entries)
 
@@ -559,6 +560,8 @@ class EncryptedEntry (Entry):
 #
 class Database:
 
+    types = [CoinEntry, CurrencyEntry, StockEntry, NewsEntry, EncryptedEntry]
+
     #
     # Constructor
     #
@@ -576,11 +579,8 @@ class Database:
     #
     def create (self):
 
-        CoinEntry.add_table_to_database (self)
-        CurrencyEntry.add_table_to_database (self)
-        StockEntry.add_table_to_database (self)
-        NewsEntry.add_table_to_database (self)
-        EncryptedEntry.add_table_to_database (self)
+        for t in Database.types:
+            t.add_table_to_database (self)
 
     #
     # Add entry to the database
@@ -609,18 +609,14 @@ class Database:
     #
     def get_entries (self, table, id=None):
 
-        if table == CoinEntry.ID:
-            entries = CoinEntry.read_from_database (self, id)
-        elif table == CurrencyEntry.ID:
-            entries = CurrencyEntry.read_from_database (self, id)
-        elif table == StockEntry.ID:
-            entries = StockEntry.read_from_database (self, id)
-        elif table == NewsEntry.ID:
-            entries = NewsEntry.read_from_database (self, id)
-        elif table == EncryptedEntry.ID:
-            entries = EncryptedEntry.read_from_database (self, id)
-        else:
-            raise RuntimeError ('Unknown database table type')
+        entries = None
+
+        for t in Database.types:
+            if table == t.ID:
+                entries = t.read_from_database (self, id)
+
+        if entries is None:
+            raise RuntimeError ('Invalid database table id')
 
         return entries
 
@@ -794,16 +790,9 @@ def database_list_table (args):
         print ('-' * len (title))
         print (frame)
 
-    if args.list == 'currencies' or args.list == 'all':
-        print_frame ('Currencies', CurrencyEntry.create_data_frame (database.get_entries (CurrencyEntry.ID)))
-    if args.list == 'coins' or args.list == 'all':
-        print_frame ('Coins', CoinEntry.create_data_frame (database.get_entries (CoinEntry.ID)))
-    if args.list == 'stock' or args.list == 'all':
-        print_frame ('Stock', StockEntry.create_data_frame (database.get_entries (StockEntry.ID)))
-    if args.list == 'news' or args.list == 'all':
-        print_frame ('News', NewsEntry.create_data_frame (database.get_entries (NewsEntry.ID)))
-    if args.list == 'encrypted' or args.list == 'all':
-        print_frame ('Encrypted', EncryptedEntry.create_data_frame (database.get_entries (EncryptedEntry.ID)))
+    for t in Database.types:
+        if args.list == t.ID or args.list == 'all':
+            print_frame (t.ID, t.create_data_frame (database.get_entries (t.ID)))
 
 #
 # Print database summary
@@ -815,25 +804,19 @@ def database_summary (args):
     def to_time (timestamp):
         return pd.Timestamp (time.strftime ('%Y-%m-%d', time.localtime (timestamp)))
 
-    def add_to_frame (name, entry_id):
-        entries = database.get_entries (entry_id)
+    frame = pd.DataFrame (columns=['type', 'id', 'entries', 'start date', 'end date'])
+
+    for t in Database.types:
+        entries = database.get_entries (t.ID)
         ids = set (map (lambda entry: entry.id, entries))
 
         for id in ids:
             id_entries = [e for e in entries if e.id == id]
             times = [t.timestamp for t in id_entries]
 
-            frame.loc[len (frame)] = [name, id, len (id_entries),
+            frame.loc[len (frame)] = [t.__name__, id, len (id_entries),
                                       pd.Timestamp (to_time (min (times))),
                                       pd.Timestamp (to_time (max (times)))]
-
-    frame = pd.DataFrame (columns=['type', 'id', 'entries', 'start date', 'end date'])
-
-    add_to_frame ('coin', CoinEntry.ID)
-    add_to_frame ('currency', CurrencyEntry.ID)
-    add_to_frame ('stock', StockEntry.ID)
-    add_to_frame ('news', NewsEntry.ID)
-    add_to_frame ('encrypted', EncryptedEntry.ID)
 
     print (frame)
 
@@ -849,7 +832,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser ()
 
     parser.add_argument ('-c', '--create',   action='store_true', default=False, help='Create new database')
-    parser.add_argument ('-l', '--list',     action='store', choices=['currencies', 'coins', 'stock', 'news', 'encrypted', 'all'], help='List database content')
+    parser.add_argument ('-l', '--list',     action='store', choices=[t.ID for t in Database.types] + ['all'], help='List database content')
     parser.add_argument ('-s', '--summary',  action='store_true', default=False, help='Print database summary')
     parser.add_argument ('-p', '--password', type=str, default=None, help='Passwort for database encryption')
     parser.add_argument ('database',         type=str, default=None, help='Database file')

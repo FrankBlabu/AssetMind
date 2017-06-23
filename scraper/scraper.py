@@ -5,11 +5,9 @@
 # Frank Blankenburg, Jun. 2017
 #
 
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 
-class Scraper:
-
-    __metaclass__ = ABCMeta
+class Scraper (ABC):
 
     #
     # Constructor
@@ -23,10 +21,8 @@ class Scraper:
     # Run scraper for acquiring a set of entries
     #
     # @param database Database to be filled
-    # @param password Password for accessing the protected database entries
     # @param start    Start timestamp in UNIX epoch format or 'None' for maximum coverage
-    # @param end      End timestamp in UNIX epoch format  or 'None' for maximum coverage
     #
     @abstractmethod
-    def run (self, database, password, start, end):
+    def run (self, database, start):
         pass

@@ -27,6 +27,15 @@ class CryptoCompareScraper (Scraper):
         super ().__init__ ('CryptoCompare')
 
     #
+    # Run scraper for acquiring a set of entries
+    #
+    # @param database Database to be filled
+    # @param start    Start timestamp in UNIX epoch format or 'None' for maximum coverage
+    #
+    def run (self, database, start):
+        pass
+
+    #
     # Scrape available information out of the GDAX API
     #
     def scrape (self, database, args):
@@ -113,9 +122,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser ()
     parser.add_argument ('-b', '--begin',    required=False, type=to_date, help='Begin date (YYYY-MM-DD)')
     parser.add_argument ('-e', '--end',      required=False, type=to_date, help='End date (YYYY-MM-DD)')
-    parser.add_argument ('-d', '--database', required=False, type=str, default=':memory:', help='Database file')
     parser.add_argument ('-v', '--verbose',  action='store_true', default=False, help='Verbose output')
     parser.add_argument ('-s', '--summary',  action='store_true', default=False, help='Print summary of available information')
+    parser.add_argument ('database', type=str, default=':memory:', help='Database file')
 
     args = parser.parse_args ()
 
