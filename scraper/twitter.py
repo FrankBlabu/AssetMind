@@ -111,6 +111,7 @@ class TwitterScraper (Scraper):
         assert database.password is not None
 
         entry = database.get_entries (EncryptedEntry.ID, TwitterScraper.DATABASE_ID)
+        print (entry)
         assert len (entry) == 1
 
         return json.loads (entry[0].text)
@@ -131,8 +132,6 @@ class TwitterScraper (Scraper):
                                                       credentials['consumer_secret']))
 
         query = server.search.tweets (q='ethereum blockchain bitcoin', count=100)
-
-        tweets = []
 
         for q in query['statuses']:
 
