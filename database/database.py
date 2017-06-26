@@ -10,11 +10,11 @@ import hashlib
 import os.path
 import pandas as pd
 import sqlite3
-import time
 import unittest
 
 from abc import ABC, abstractmethod
 from database.encryption import Encryption
+from core.time import Timestamp
 
 #--------------------------------------------------------------------------
 # Base class for database entries
@@ -33,16 +33,16 @@ class Entry (ABC):
     #
     def __init__ (self, timestamp, id, source):
 
-        assert isinstance (timestamp, int)
+        assert isinstance (timestamp, Timestamp)
         assert isinstance (id, str)
         assert isinstance (source, str) or source is None
         assert '-' not in id
         assert source is None or '-' not in source
 
         if source is not None:
-            content = '{0}-{1}-{2}'.format (timestamp, id, source)
+            content = '{0}-{1}-{2}'.format (timestamp.epoch, id, source)
         else:
-            content = '{0}-{1}'.format (timestamp, id)
+            content = '{0}-{1}'.format (timestamp.epoch, id)
 
         h = hashlib.sha256 ()
         h.update (bytes (content, 'utf-8'))
@@ -140,7 +140,7 @@ class CoinEntry (Entry):
 
         params = []
         params.append (self.hash)
-        params.append (self.timestamp)
+        params.append (self.timestamp.epoch)
         params.append (self.id)
         params.append (self.source)
         params.append (self.course)
@@ -168,7 +168,7 @@ class CoinEntry (Entry):
     @staticmethod
     def create_data_frame (entries):
         return Entry.fill_data_frame (['timestamp', 'id', 'source', 'course', 'currency'],
-                                        lambda entry: [pd.Timestamp (time.ctime (entry.timestamp)), entry.id,
+                                        lambda entry: [entry.timestamp.to_pandas (), entry.id,
                                                        entry.source, entry.course, entry.currency],
                                         entries)
 
@@ -229,7 +229,7 @@ class CurrencyEntry (Entry):
 
         params = []
         params.append (self.hash)
-        params.append (self.timestamp)
+        params.append (self.timestamp.epoch)
         params.append (self.id)
         params.append (self.course)
 
@@ -254,7 +254,7 @@ class CurrencyEntry (Entry):
     @staticmethod
     def create_data_frame (entries):
         return Entry.fill_data_frame (['timestamp', 'id', 'course'],
-                                        lambda entry: [pd.Timestamp (time.ctime (entry.timestamp)), entry.id, entry.course],
+                                        lambda entry: [entry.timestamp.to_pandas (), entry.id, entry.course],
                                         entries)
 
     def __repr__ (self):
@@ -312,7 +312,7 @@ class StockEntry (Entry):
 
         params = []
         params.append (self.hash)
-        params.append (self.timestamp)
+        params.append (self.timestamp.epoch)
         params.append (self.id)
         params.append (self.course)
 
@@ -337,7 +337,7 @@ class StockEntry (Entry):
     #
     def create_data_frame (entries):
         return Entry.fill_data_frame (['timestamp', 'id', 'course'],
-                                        lambda entry:  [pd.Timestamp (time.ctime (entry.timestamp)), entry.id, entry.course],
+                                        lambda entry:  [entry.timestamp.to_pandas (), entry.id, entry.course],
                                         entries)
 
     def __repr__ (self):
@@ -402,7 +402,7 @@ class NewsEntry (Entry):
 
         params = []
         params.append (self.hash)
-        params.append (self.timestamp)
+        params.append (self.timestamp.epoch)
         params.append (self.id)
         params.append (self.text)
         params.append (self.shares if self.shares is not None else -1)
@@ -429,7 +429,7 @@ class NewsEntry (Entry):
     def create_data_frame (entries):
 
         return Entry.fill_data_frame (['timestamp', 'id', 'text', 'shares', 'likes'],
-                                        lambda entry: [pd.Timestamp (time.ctime (entry.timestamp)), entry.id, entry.text,
+                                        lambda entry: [entry.timestamp.to_pandas (), entry.id, entry.text,
                                                        entry.shares if entry.shares is not None else '-',
                                                        entry.likes if entry.likes is not None else '-'],
                                         entries)
@@ -504,7 +504,7 @@ class EncryptedEntry (Entry):
 
         params = []
         params.append (self.hash)
-        params.append (self.timestamp)
+        params.append (self.timestamp.epoch)
         params.append (self.id)
         params.append (encryption.encrypt (self.text, database.password))
 
@@ -541,7 +541,7 @@ class EncryptedEntry (Entry):
     def create_data_frame (entries):
 
         return Entry.fill_data_frame (['timestamp', 'id', 'text'],
-                                        lambda entry: [pd.Timestamp (time.ctime (entry.timestamp)), entry.id, entry.text],
+                                        lambda entry: [entry.timestamp.to_pandas (), entry.id, entry.text],
                                         entries)
 
     def __repr__ (self):
@@ -644,9 +644,9 @@ class TestDatabase (unittest.TestCase):
         # Setup some coin entries
         #
         coin_entries = []
-        coin_entries.append (CoinEntry (1234, 'eth', 'coinbase', 230.0, 'eur'))
-        coin_entries.append (CoinEntry (1238, 'btc', 'anycoind', 2200.12, 'eur'))
-        coin_entries.append (CoinEntry (1410, 'eth', 'coinbase', 240.0, 'usd'))
+        coin_entries.append (CoinEntry (Timestamp (1234), 'eth', 'coinbase', 230.0, 'eur'))
+        coin_entries.append (CoinEntry (Timestamp (1238), 'btc', 'anycoind', 2200.12, 'eur'))
+        coin_entries.append (CoinEntry (Timestamp (1410), 'eth', 'coinbase', 240.0, 'usd'))
 
         for entry in coin_entries:
             database.add (entry)
@@ -655,9 +655,9 @@ class TestDatabase (unittest.TestCase):
         # Setup some currency entries
         #
         currency_entries = []
-        currency_entries.append (CurrencyEntry (1236, 'eur', 230.0))
-        currency_entries.append (CurrencyEntry (1237, 'eur', 2200.12))
-        currency_entries.append (CurrencyEntry (1416, 'usd', 240.0))
+        currency_entries.append (CurrencyEntry (Timestamp (1236), 'eur', 230.0))
+        currency_entries.append (CurrencyEntry (Timestamp (1237), 'eur', 2200.12))
+        currency_entries.append (CurrencyEntry (Timestamp (1416), 'usd', 240.0))
 
         for entry in currency_entries:
             database.add (entry)
@@ -666,9 +666,9 @@ class TestDatabase (unittest.TestCase):
         # Setup some stock course entries
         #
         stock_entries = []
-        stock_entries.append (StockEntry (1234, 'gdax',   230.0))
-        stock_entries.append (StockEntry (1239, 'nasdaq', 2200.12))
-        stock_entries.append (StockEntry (1418, 'gdax',   240.0))
+        stock_entries.append (StockEntry (Timestamp (1234), 'gdax',   230.0))
+        stock_entries.append (StockEntry (Timestamp (1239), 'nasdaq', 2200.12))
+        stock_entries.append (StockEntry (Timestamp (1418), 'gdax',   240.0))
 
         for entry in stock_entries:
             database.add (entry)
@@ -677,9 +677,9 @@ class TestDatabase (unittest.TestCase):
         # Setup some news entries
         #
         news_entries = []
-        news_entries.append (NewsEntry (1234, 'coindesk', 'Well, some went up, some went down.', 1, 2))
-        news_entries.append (NewsEntry (1242, 'btcinfo',  'Ethereum is the future of something whatever.', 40, 5))
-        news_entries.append (NewsEntry (1234, 'fb_eth',   'Hey, should I but, sell, or go to the lavatory ?', None, None))
+        news_entries.append (NewsEntry (Timestamp (1234), 'coindesk', 'Well, some went up, some went down.', 1, 2))
+        news_entries.append (NewsEntry (Timestamp (1242), 'btcinfo',  'Ethereum is the future of something whatever.', 40, 5))
+        news_entries.append (NewsEntry (Timestamp (1234), 'fb_eth',   'Hey, should I but, sell, or go to the lavatory ?', None, None))
 
         for entry in news_entries:
             database.add (entry)
@@ -740,10 +740,10 @@ class TestDatabase (unittest.TestCase):
         entries = []
 
         text1 = "{'text': 'abc', 'id': 23}"
-        entries.append (EncryptedEntry (1234, 'twitter', text1))
+        entries.append (EncryptedEntry (Timestamp (1234), 'twitter', text1))
 
         text2 = "{'login': 'xyz123', 'auth': 42}"
-        entries.append (EncryptedEntry (5678, 'facebook', text2))
+        entries.append (EncryptedEntry (Timestamp (5678), 'facebook', text2))
 
         for entry in entries:
             database.add (entry)
@@ -804,9 +804,6 @@ def database_summary (args):
 
     database = Database (args.database, args.password)
 
-    def to_time (timestamp):
-        return pd.Timestamp (time.strftime ('%Y-%m-%d', time.localtime (timestamp)))
-
     frame = pd.DataFrame (columns=['type', 'id', 'entries', 'start date', 'end date'])
 
     for t in Database.types:
@@ -818,8 +815,7 @@ def database_summary (args):
             times = [t.timestamp for t in id_entries]
 
             frame.loc[len (frame)] = [t.__name__, id, len (id_entries),
-                                      to_time (min (times)),
-                                      to_time (max (times))]
+                                      min (times), max (times)]
 
     print (frame)
 

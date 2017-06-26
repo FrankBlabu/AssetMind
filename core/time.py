@@ -7,6 +7,7 @@
 
 import datetime
 import dateutil.parser
+import pandas as pd
 import time
 import unittest
 
@@ -28,7 +29,7 @@ class Timestamp:
     def __init__ (self, value, timezone=0):
 
         if isinstance (value, int):
-            self.epoch = epoch
+            self.epoch = value
         elif isinstance (value, float):
             self.epoch = int (round (value))
         elif isinstance (value, str):
@@ -40,21 +41,18 @@ class Timestamp:
         else:
             raise RuntimeError ('Unhandled time format type \'{typename}\''. format (typename=type (value).__name__))
 
-        t = time.gmtime (self.epoch)
-        t = time.struct_time ((t.tm_year, t.tm_mon, t.tm_mday, t.tm_hour, 0, 0, t.tm_wday, t.tm_yday, t.tm_isdst))
+        t = datetime.datetime.fromtimestamp (self.epoch)
+        t = t.replace (minute=0, second=0)
+        self.epoch = t.timestamp ()
 
-        self.epoch = int (round (time.mktime (t)))
+    def to_pandas (self):
+        return pd.Timestamp (time.ctime (self.epoch))
 
+    def __lt__ (self, other):
+        return self.epoch < other.epoch
 
     def __eq__ (self, other):
-        t1 = time.gmtime (self.epoch)
-        t2 = time.gmtime (other.epoch)
-
-        return t1.tm_year == t2.tm_year and \
-        t1.tm_mon == t2.tm_mon and \
-        t1.tm_mday == t2.tm_mday and \
-        t1.tm_hour == t2.tm_hour
-
+        return self.epoch == other.epoch
 
     def __repr__ (self):
         return time.strftime ('%Y-%m-%d %Hh', time.gmtime (self.epoch))

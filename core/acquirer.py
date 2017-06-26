@@ -12,6 +12,7 @@ import scraper.cryptocompare
 import scraper.twitter
 
 from database.database import Database
+from core.time import Timestamp
 
 #
 # This class is controlling the whole data acquisition. Its task is to trigger the registered
@@ -24,7 +25,7 @@ class Acquirer:
     # Earliest date captured in the database. The scrapers will try to gather as much data as
     # possible starting from this point in time on to the current time.
     #
-    DATABASE_START_DATE = '2015-1-1'
+    DATABASE_START_DATE = Timestamp ('2015-1-1')
 
     def __init__ (self):
         self.sources = []
@@ -42,13 +43,13 @@ class Acquirer:
     #
     def run (self, database):
 
-        start = dateutil.parser.parse (Acquirer.DATABASE_START_DATE)
+        start = Acquirer.DATABASE_START_DATE
 
-        print ('Filling/completing database from the {date} on'.format (date=start.isoformat (' ')))
+        print ('Filling/completing database from the {date} on'.format (date=start))
 
         for source in self.sources:
             print ('Running {scraper}...'.format (scraper=source.name))
-            source.run (database, start.timestamp (), lambda message: print ('  ' + message))
+            source.run (database, start, lambda message: print ('  ' + message))
 
 
 if __name__ == '__main__':

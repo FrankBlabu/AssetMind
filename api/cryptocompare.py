@@ -5,12 +5,12 @@
 # Frank Blankenburg, Jun. 2017
 #
 
-import datetime
 import json
 import urllib
 import urllib.request
 
 from enum import Enum
+from core.time import Timestamp
 
 #--------------------------------------------------------------------------
 # Interface for accessing the Cryptocompare web API
@@ -88,7 +88,7 @@ class CryptoCompare:
 if __name__ == '__main__':
     client = CryptoCompare ()
 
-    entries = client.get_historical_prices ('ETH', CryptoCompare.Interval.DAY)
-    print (len (entries))
-    print (datetime.datetime.fromtimestamp (entries[0]['time']))
-    print (datetime.datetime.fromtimestamp (entries[-1]['time']))
+    entries = client.get_historical_prices ('ETH', CryptoCompare.Interval.HOUR)
+    print ('{n} entries'.format (n=len (entries)))
+    print (Timestamp (entries[0]['time']))
+    print (Timestamp (entries[-1]['time']))
