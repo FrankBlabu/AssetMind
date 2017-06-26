@@ -111,7 +111,6 @@ class TwitterScraper (Scraper):
         assert database.password is not None
 
         entry = database.get_entries (EncryptedEntry.ID, TwitterScraper.DATABASE_ID)
-        print (entry)
         assert len (entry) == 1
 
         return json.loads (entry[0].text)
@@ -169,8 +168,6 @@ class TwitterScraper (Scraper):
 #----------------------------------------------------------------------------
 # MAIN
 #
-
-
 if __name__ == '__main__':
 
         #
@@ -182,7 +179,7 @@ if __name__ == '__main__':
         parser.add_argument ('-c', '--credentials', action='store_true', default=False, help='Show authentification credential set')
         parser.add_argument ('-s', '--summary', action='store_true', default=False, help='Tweet summary')
         parser.add_argument ('-p', '--password', type=str, required=True, help='Passwort for database encryption')
-        parser.add_argument ('database', type=str, nargs='?', default=':memory:', help='Database file')
+        parser.add_argument ('database', type=str, default=':memory:', help='Database file')
 
         args = parser.parse_args ()
 

@@ -13,6 +13,11 @@ import scraper.twitter
 
 from database.database import Database
 
+#
+# This class is controlling the whole data acquisition. Its task is to trigger the registered
+# scrapers to fill the database for a specified time frame with as much data as they can
+# get.
+#
 class Acquirer:
 
     #
@@ -42,7 +47,7 @@ class Acquirer:
         print ('Filling/completing database from the {date} on'.format (date=start.isoformat (' ')))
 
         for source in self.sources:
-            print ('Running {scraper}...'.format (scraper=type (source).__name__))
+            print ('Running {scraper}...'.format (scraper=source.name))
             source.run (database, start.timestamp (), lambda message: print ('  ' + message))
 
 

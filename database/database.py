@@ -818,8 +818,8 @@ def database_summary (args):
             times = [t.timestamp for t in id_entries]
 
             frame.loc[len (frame)] = [t.__name__, id, len (id_entries),
-                                      pd.Timestamp (to_time (min (times))),
-                                      pd.Timestamp (to_time (max (times)))]
+                                      to_time (min (times)),
+                                      to_time (max (times))]
 
     print (frame)
 
