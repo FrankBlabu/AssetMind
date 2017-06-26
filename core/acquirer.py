@@ -6,7 +6,6 @@
 #
 
 import argparse
-import dateutil.parser
 
 import scraper.cryptocompare
 import scraper.twitter
@@ -52,6 +51,9 @@ class Acquirer:
             source.run (database, start, lambda message: print ('  ' + message))
 
 
+#----------------------------------------------------------------------------
+# MAIN
+#
 if __name__ == '__main__':
     #
     # Parse command line arguments

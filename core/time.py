@@ -38,12 +38,22 @@ class Timestamp:
             self.epoch = time.mktime (value)
         elif isinstance (value, datetime.datetime):
             self.epoch = value.timestamp ()
+        elif isinstance (value, Timestamp):
+            self.epoch = value
         else:
             raise RuntimeError ('Unhandled time format type \'{typename}\''. format (typename=type (value).__name__))
 
         t = datetime.datetime.fromtimestamp (self.epoch)
         t = t.replace (minute=0, second=0)
         self.epoch = t.timestamp ()
+
+    #
+    # Convert timestamp into a string matching the given format
+    #
+    # @param format Format the time is converted to (like '%Y-%m-%d')
+    #
+    def to_string (self, format):
+        return time.strftime (format, time.gmtime (self.epoch))
 
     def to_pandas (self):
         return pd.Timestamp (time.ctime (self.epoch))

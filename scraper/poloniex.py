@@ -6,17 +6,14 @@
 #
 
 import argparse
-import json
 import pandas as pd
 import sys
-import time
-import urllib
 
 import api.poloniex
 
+from core.time import Timestamp
 from scraper.scraper import Scraper
 from database.database import Database
-from database.database import CoinEntry
 
 #--------------------------------------------------------------------------
 # Scraper adding data extracted from Poloniex to the database
@@ -67,18 +64,12 @@ class PoloniexScraper (Scraper):
 #
 if __name__ == '__main__':
 
-    def to_date (s):
-        try:
-            return time.strptime (s, '%Y-%m-%d')
-        except ValueError:
-            raise argparse.ArgumentTypeError ('Not a valid date: {0}'.format (s))
-
     #
     # Parse command line arguments
     #
     parser = argparse.ArgumentParser ()
-    parser.add_argument ('-b', '--begin',    required=False, type=to_date, help='Begin date (YYYY-MM-DD)')
-    parser.add_argument ('-e', '--end',      required=False, type=to_date, help='End date (YYYY-MM-DD)')
+    parser.add_argument ('-b', '--begin',    required=False, type=Timestamp, help='Begin date (YYYY-MM-DD)')
+    parser.add_argument ('-e', '--end',      required=False, type=Timestamp, help='End date (YYYY-MM-DD)')
     parser.add_argument ('-d', '--database', required=False, type=str, default=':memory:', help='Database file')
     parser.add_argument ('-v', '--verbose',  action='store_true', default=False, help='Verbose output')
     parser.add_argument ('-s', '--summary',  action='store_true', default=False, help='Print summary of available information')

@@ -5,10 +5,7 @@
 # Frank Blankenburg, Jun. 2017
 #
 
-import argparse
 import json
-import pandas as pd
-import sys
 import time
 import urllib
 

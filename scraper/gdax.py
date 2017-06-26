@@ -9,11 +9,9 @@
 
 import argparse
 import GDAX
-import pandas as pd
 import sys
-import time
-import unittest
 
+from core.time import Timestamp
 from scraper.scraper import Scraper
 from database.database import Database
 from database.database import CoinEntry
@@ -33,8 +31,8 @@ class GDAXScraper (Scraper):
 
         client = GDAX.PublicClient ()
 
-        start = time.strftime ('%Y-%m-%d', args.start) if args.start is not None else ''
-        end   = time.strftime ('%Y-%m-%d', args.end  ) if args.end   is not None else ''
+        start = args.start.to_string ('%Y-%m-%d') if args.start is not None else ''
+        end   = args.end.to_string ('%Y-%m-%d')   if args.end   is not None else ''
 
         #
         # Each entry has the format (time, low, high, open, close, volume)
@@ -43,13 +41,13 @@ class GDAXScraper (Scraper):
         entries = []
 
         for rate in client.getProductHistoricRates (product='ETH-USD', granularity=60 * 60 * 24, start=start, end=end):
-            entries.append (CoinEntry (rate[0] + time.timezone, 'eth', 'gdax', (rate[1] + rate[2]) / 2, 'usd'))
+            entries.append (CoinEntry (rate[0], 'eth', 'gdax', (rate[1] + rate[2]) / 2, 'usd'))
 
         for rate in client.getProductHistoricRates (product='BTC-USD', granularity=60 * 60 * 24, start=start, end=end):
-            entries.append (CoinEntry (rate[0] + time.timezone, 'btc', 'gdax', (rate[1] + rate[2]) / 2, 'usd'))
+            entries.append (CoinEntry (rate[0], 'btc', 'gdax', (rate[1] + rate[2]) / 2, 'usd'))
 
         for rate in client.getProductHistoricRates (product='LTC-USD', granularity=60 * 60 * 24, start=start, end=end):
-            entries.append (CoinEntry (rate[0] + time.timezone, 'ltc', 'gdax', (rate[1] + rate[2]) / 2, 'usd'))
+            entries.append (CoinEntry (rate[0], 'ltc', 'gdax', (rate[1] + rate[2]) / 2, 'usd'))
 
         for entry in entries:
             database.add (entry)
@@ -90,18 +88,12 @@ class GDAXScraper (Scraper):
 #
 if __name__ == '__main__':
 
-    def to_date (s):
-        try:
-            return time.strptime (s, '%Y-%m-%d')
-        except ValueError:
-            raise argparse.ArgumentTypeError ('Not a valid date: {0}'.format (s))
-
     #
     # Parse command line arguments
     #
     parser = argparse.ArgumentParser ()
-    parser.add_argument ('-b', '--begin',    required=False, type=to_date, help='Begin date (YYYY-MM-DD)')
-    parser.add_argument ('-e', '--end',      required=False, type=to_date, help='End date (YYYY-MM-DD)')
+    parser.add_argument ('-b', '--begin',    required=False, type=Timestamp, help='Begin date (YYYY-MM-DD)')
+    parser.add_argument ('-e', '--end',      required=False, type=Timestamp, help='End date (YYYY-MM-DD)')
     parser.add_argument ('-d', '--database', required=False, type=str, default=':memory:', help='Database file')
     parser.add_argument ('-v', '--verbose',  action='store_true', default=False, help='Verbose output')
     parser.add_argument ('-s', '--summary',  action='store_true', default=False, help='Print summary of available information')

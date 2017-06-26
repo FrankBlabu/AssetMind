@@ -33,24 +33,23 @@ class Entry (ABC):
     #
     def __init__ (self, timestamp, id, source):
 
-        assert isinstance (timestamp, Timestamp)
         assert isinstance (id, str)
         assert isinstance (source, str) or source is None
         assert '-' not in id
         assert source is None or '-' not in source
 
+        self.timestamp = Timestamp (timestamp)
+        self.id = id
+        self.source = source
+
         if source is not None:
-            content = '{0}-{1}-{2}'.format (timestamp.epoch, id, source)
+            content = '{0}-{1}-{2}'.format (self.timestamp.epoch, id, source)
         else:
-            content = '{0}-{1}'.format (timestamp.epoch, id)
+            content = '{0}-{1}'.format (self.timestamp.epoch, id)
 
         h = hashlib.sha256 ()
         h.update (bytes (content, 'utf-8'))
-
         self.hash = h.hexdigest ()
-        self.timestamp = timestamp
-        self.id = id
-        self.source = source
 
     @staticmethod
     def fill_data_frame (header, func, entries):
@@ -644,9 +643,9 @@ class TestDatabase (unittest.TestCase):
         # Setup some coin entries
         #
         coin_entries = []
-        coin_entries.append (CoinEntry (Timestamp (1234), 'eth', 'coinbase', 230.0, 'eur'))
-        coin_entries.append (CoinEntry (Timestamp (1238), 'btc', 'anycoind', 2200.12, 'eur'))
-        coin_entries.append (CoinEntry (Timestamp (1410), 'eth', 'coinbase', 240.0, 'usd'))
+        coin_entries.append (CoinEntry (1234, 'eth', 'coinbase', 230.0, 'eur'))
+        coin_entries.append (CoinEntry (1238, 'btc', 'anycoind', 2200.12, 'eur'))
+        coin_entries.append (CoinEntry (1410, 'eth', 'coinbase', 240.0, 'usd'))
 
         for entry in coin_entries:
             database.add (entry)
@@ -655,9 +654,9 @@ class TestDatabase (unittest.TestCase):
         # Setup some currency entries
         #
         currency_entries = []
-        currency_entries.append (CurrencyEntry (Timestamp (1236), 'eur', 230.0))
-        currency_entries.append (CurrencyEntry (Timestamp (1237), 'eur', 2200.12))
-        currency_entries.append (CurrencyEntry (Timestamp (1416), 'usd', 240.0))
+        currency_entries.append (CurrencyEntry (1236, 'eur', 230.0))
+        currency_entries.append (CurrencyEntry (1237, 'eur', 2200.12))
+        currency_entries.append (CurrencyEntry (1416, 'usd', 240.0))
 
         for entry in currency_entries:
             database.add (entry)
@@ -666,9 +665,9 @@ class TestDatabase (unittest.TestCase):
         # Setup some stock course entries
         #
         stock_entries = []
-        stock_entries.append (StockEntry (Timestamp (1234), 'gdax',   230.0))
-        stock_entries.append (StockEntry (Timestamp (1239), 'nasdaq', 2200.12))
-        stock_entries.append (StockEntry (Timestamp (1418), 'gdax',   240.0))
+        stock_entries.append (StockEntry (1234, 'gdax',   230.0))
+        stock_entries.append (StockEntry (1239, 'nasdaq', 2200.12))
+        stock_entries.append (StockEntry (1418, 'gdax',   240.0))
 
         for entry in stock_entries:
             database.add (entry)
@@ -677,9 +676,9 @@ class TestDatabase (unittest.TestCase):
         # Setup some news entries
         #
         news_entries = []
-        news_entries.append (NewsEntry (Timestamp (1234), 'coindesk', 'Well, some went up, some went down.', 1, 2))
-        news_entries.append (NewsEntry (Timestamp (1242), 'btcinfo',  'Ethereum is the future of something whatever.', 40, 5))
-        news_entries.append (NewsEntry (Timestamp (1234), 'fb_eth',   'Hey, should I but, sell, or go to the lavatory ?', None, None))
+        news_entries.append (NewsEntry (1234, 'coindesk', 'Well, some went up, some went down.', 1, 2))
+        news_entries.append (NewsEntry (1242, 'btcinfo',  'Ethereum is the future of something whatever.', 40, 5))
+        news_entries.append (NewsEntry (1234, 'fb_eth',   'Hey, should I but, sell, or go to the lavatory ?', None, None))
 
         for entry in news_entries:
             database.add (entry)
@@ -740,10 +739,10 @@ class TestDatabase (unittest.TestCase):
         entries = []
 
         text1 = "{'text': 'abc', 'id': 23}"
-        entries.append (EncryptedEntry (Timestamp (1234), 'twitter', text1))
+        entries.append (EncryptedEntry (1234, 'twitter', text1))
 
         text2 = "{'login': 'xyz123', 'auth': 42}"
-        entries.append (EncryptedEntry (Timestamp (5678), 'facebook', text2))
+        entries.append (EncryptedEntry (5678, 'facebook', text2))
 
         for entry in entries:
             database.add (entry)
