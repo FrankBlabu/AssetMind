@@ -35,7 +35,7 @@ class TwitterScraper (Scraper):
 
     def __init__ (self):
 
-        super ().__init__ ('Twitter')
+        super ().__init__ ('Twitter', NewsEntry, [TwitterScraper.DATABASE_ID])
 
         emoticons_str = r"""
             (?:
@@ -139,7 +139,8 @@ class TwitterScraper (Scraper):
             tweet = [token if self.emoticon_regexp.search (token) else token.lower () for token in tweet]
 
             database.add (NewsEntry (int (dateutil.parser.parse (q['created_at']).timestamp ()),
-                                     'twitter', json.dumps (tweet), q['retweet_count'], q['favorite_count']))
+                                     TwitterScraper.DATABASE_ID, json.dumps (tweet),
+                                     q['retweet_count'], q['favorite_count']))
 
         database.commit ()
 

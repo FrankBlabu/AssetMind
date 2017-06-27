@@ -17,8 +17,13 @@ class Scraper (ABC):
     #
     # @param name Printable name of the scraper for logging outputs
     #
-    def __init__ (self, name):
+    def __init__ (self, name, entry_type, handled_ids):
+
+        assert isinstance (handled_ids, list)
+
         self.name = name
+        self.entry_type = entry_type
+        self.handled_ids = handled_ids
 
     #
     # Run scraper for acquiring a set of entries

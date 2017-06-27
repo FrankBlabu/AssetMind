@@ -23,7 +23,7 @@ class CryptoCompareScraper (Scraper):
     selected_coins = sorted (['ETH', 'ETC', 'BTC', 'XMR', 'XRP', 'LTC', 'ZEC', 'DASH'])
 
     def __init__ (self):
-        super ().__init__ ('CryptoCompare')
+        super ().__init__ ('CryptoCompare', CoinEntry, CryptoCompareScraper.selected_coins)
 
     #
     # Run scraper for acquiring a set of entries

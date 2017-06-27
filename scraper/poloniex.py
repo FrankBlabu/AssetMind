@@ -14,6 +14,7 @@ import api.poloniex
 from core.time import Timestamp
 from scraper.scraper import Scraper
 from database.database import Database
+from database.database import CoinEntry
 
 #--------------------------------------------------------------------------
 # Scraper adding data extracted from Poloniex to the database
@@ -22,7 +23,7 @@ class PoloniexScraper (Scraper):
 
     def __init__ (self, api_key=None, secret=None):
 
-        super ().__init__ ('Poloniex')
+        super ().__init__ ('Poloniex', CoinEntry, [])
 
         self.api_key = api_key
         self.secret  = secret

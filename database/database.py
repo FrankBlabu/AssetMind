@@ -39,8 +39,8 @@ class Entry (ABC):
         assert source is None or '-' not in source
 
         self.timestamp = Timestamp (timestamp)
-        self.id = id
-        self.source = source
+        self.id = id.lower ()
+        self.source = source.lower () if source is not None else None
 
         if source is not None:
             content = '{0}-{1}-{2}'.format (self.timestamp.epoch, id, source)

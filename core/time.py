@@ -5,11 +5,13 @@
 # Frank Blankenburg, Jun. 2017
 #
 
-import datetime
 import dateutil.parser
 import pandas as pd
 import time
 import unittest
+
+from datetime import datetime
+from datetime import timedelta
 
 #--------------------------------------------------------------------------
 # CLASS core.time.Timestamp
@@ -35,17 +37,36 @@ class Timestamp:
         elif isinstance (value, str):
             self.epoch = int (round (dateutil.parser.parse (value).timestamp ()))
         elif isinstance (value, time.struct_time):
-            self.epoch = time.mktime (value)
+            self.epoch = int (time.mktime (value))
         elif isinstance (value, datetime.datetime):
-            self.epoch = value.timestamp ()
+            self.epoch = int (value.timestamp ())
         elif isinstance (value, Timestamp):
             self.epoch = value
         else:
             raise RuntimeError ('Unhandled time format type \'{typename}\''. format (typename=type (value).__name__))
 
-        t = datetime.datetime.fromtimestamp (self.epoch)
+        t = datetime.fromtimestamp (self.epoch)
         t = t.replace (minute=0, second=0)
-        self.epoch = t.timestamp ()
+        self.epoch = int (round (t.timestamp ()))
+
+    #
+    # Advance time by some days / hours
+    #
+    def advance (self, days=None, hours=None):
+
+        if days is not None:
+            delta = timedelta (days=abs (days))
+            if days >= 0:
+                self.epoch += delta.total_seconds ()
+            else:
+                self.epoch -= delta.total_seconds ()
+
+        if hours is not None:
+            delta = timedelta (hours=abs (hours))
+            if hours >= 0:
+                self.epoch += delta.total_seconds ()
+            else:
+                self.epoch -= delta.total_seconds ()
 
     #
     # Convert timestamp into a string matching the given format
@@ -64,6 +85,9 @@ class Timestamp:
     def __eq__ (self, other):
         return self.epoch == other.epoch
 
+    def __hash__ (self):
+        return self.epoch
+
     def __repr__ (self):
         return time.strftime ('%Y-%m-%d %Hh', time.gmtime (self.epoch))
 
@@ -73,7 +97,7 @@ class Timestamp:
 #
 class TestTimestamp (unittest.TestCase):
 
-    def test_timestamp (self):
+    def test_timestamp_create (self):
 
         t = time.localtime ()
 
@@ -92,3 +116,29 @@ class TestTimestamp (unittest.TestCase):
         self.assertEqual (s1, s3)
         self.assertNotEqual (s1, s4)
         self.assertNotEqual (s1, s5)
+
+    def test_timestamp_advance (self):
+
+        s = Timestamp ('2017-04-21 14:00')
+        s.advance (hours=+2)
+        self.assertEqual (s, Timestamp ('2017-04-21 16:00'))
+
+        s = Timestamp ('2017-04-21 14:00')
+        s.advance (hours=-3)
+        self.assertEqual (s, Timestamp ('2017-04-21 11:00'))
+
+        s = Timestamp ('2017-02-17 01:00')
+        s.advance (hours=-2)
+        self.assertEqual (s, Timestamp ('2017-02-16 23:00'))
+
+        s = Timestamp ('2017-02-17 23:00')
+        s.advance (hours=+2)
+        self.assertEqual (s, Timestamp ('2017-02-18 01:00'))
+
+        s = Timestamp ('2017-02-17 23:00')
+        s.advance (days=+3, hours=+2)
+        self.assertEqual (s, Timestamp ('2017-02-21 01:00'))
+
+        s = Timestamp ('2017-02-17 23:00')
+        s.advance (days=-5, hours=+2)
+        self.assertEqual (s, Timestamp ('2017-02-13 01:00'))

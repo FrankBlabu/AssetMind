@@ -6,6 +6,7 @@
 #
 
 import argparse
+import time
 
 import scraper.cryptocompare
 import scraper.twitter
@@ -24,7 +25,7 @@ class Acquirer:
     # Earliest date captured in the database. The scrapers will try to gather as much data as
     # possible starting from this point in time on to the current time.
     #
-    DATABASE_START_DATE = Timestamp ('2015-1-1')
+    DATABASE_START_DATE = Timestamp ('2012-1-1')
 
     def __init__ (self):
         self.sources = []
@@ -43,12 +44,45 @@ class Acquirer:
     def run (self, database):
 
         start = Acquirer.DATABASE_START_DATE
+        end   = Timestamp (time.time ())
+
+        assert start != end
 
         print ('Filling/completing database from the {date} on'.format (date=start))
 
         for source in self.sources:
             print ('Running {scraper}...'.format (scraper=source.name))
-            source.run (database, start, lambda message: print ('  ' + message))
+
+            #
+            # Query database for all points in time this scraper already got data for
+            #
+            timestamps = None
+
+            for id in source.handled_ids:
+                entries = database.get_entries (source.entry_type.ID, id)
+
+                if timestamps is None:
+                    timestamps = set ([entry.timestamp for entry in entries])
+                else:
+                    timestamps &= set ([entry.timestamp for entry in entries])
+
+            #
+            # Compute interval (first missing and last missing entry) which are still
+            # in need of data
+            #
+            source_start = start
+            source_end = end
+
+            while source_start < source_end and source_start in timestamps:
+                source_start.advance (hours=1)
+
+            while source_end > source_start and source_end in timestamps:
+                source_end.advance (hours=-1)
+
+            if source_start != source_end or source_start not in timestamps:
+                print ("* Refresh: ", source_start, source_end)
+
+            #source.run (database, start, lambda message: print ('  ' + message))
 
 
 #----------------------------------------------------------------------------
