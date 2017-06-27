@@ -17,37 +17,35 @@ from datetime import timedelta
 # CLASS core.time.Timestamp
 #
 # Timestamp representing object. The resolution is one hour and the internal
-# timezone offset is always GMT.
+# timezone offset is always UTC.
 #
 class Timestamp:
 
     #
-    # Create timestamp from
+    # Create timestamp from generic input value
     #
-    # @param value    Time representing value. Can be an integer for 'seconds since epoch',
-    #                 a string or any other time representation
-    # @param timezone Hourly timezone offset of the time value. 0 is GMT.
+    # @param value Time representing value. Can be an integer for 'seconds since epoch',
+    #              a string or any other time representation. 'None' will use the
+    #              current time instead,
     #
-    def __init__ (self, value, timezone=0):
+    def __init__ (self, value=None):
 
-        if isinstance (value, int):
-            self.epoch = value
+        if value is None:
+            self.timestamp = datetime.utcnow ()
+        elif isinstance (value, int):
+            self.timestamp = datetime.fromtimestamp (value)
         elif isinstance (value, float):
-            self.epoch = int (round (value))
+            self.timestamp = datetime.fromtimestamp (int (round (value)))
         elif isinstance (value, str):
-            self.epoch = int (round (dateutil.parser.parse (value).timestamp ()))
-        elif isinstance (value, time.struct_time):
-            self.epoch = int (time.mktime (value))
-        elif isinstance (value, datetime.datetime):
-            self.epoch = int (value.timestamp ())
+            self.timestamp = dateutil.parser.parse (value)
+        elif isinstance (value, datetime):
+            self.timestamp = value
         elif isinstance (value, Timestamp):
-            self.epoch = value
+            self.timestamp = value.timestamp
         else:
             raise RuntimeError ('Unhandled time format type \'{typename}\''. format (typename=type (value).__name__))
 
-        t = datetime.fromtimestamp (self.epoch)
-        t = t.replace (minute=0, second=0)
-        self.epoch = int (round (t.timestamp ()))
+        self.timestamp = self.timestamp.replace (minute=0, second=0, microsecond=0)
 
     #
     # Advance time by some days / hours
@@ -57,16 +55,23 @@ class Timestamp:
         if days is not None:
             delta = timedelta (days=abs (days))
             if days >= 0:
-                self.epoch += delta.total_seconds ()
+                self.timestamp += delta
             else:
-                self.epoch -= delta.total_seconds ()
+                self.timestamp -= delta
 
         if hours is not None:
             delta = timedelta (hours=abs (hours))
             if hours >= 0:
-                self.epoch += delta.total_seconds ()
+                self.timestamp += delta
             else:
-                self.epoch -= delta.total_seconds ()
+                self.timestamp -= delta
+
+    #
+    # Return current time (in UTC)
+    #
+    @staticmethod
+    def now ():
+        return Timestamp (datetime.utcnow ())
 
     #
     # Convert timestamp into a string matching the given format
@@ -74,22 +79,22 @@ class Timestamp:
     # @param format Format the time is converted to (like '%Y-%m-%d')
     #
     def to_string (self, format):
-        return time.strftime (format, time.gmtime (self.epoch))
+        return self.timestamp.strftime (format)
 
     def to_pandas (self):
-        return pd.Timestamp (time.ctime (self.epoch))
+        return pd.Timestamp (self.timestamp)
 
     def __lt__ (self, other):
-        return self.epoch < other.epoch
+        return self.timestamp < other.timestamp
 
     def __eq__ (self, other):
-        return self.epoch == other.epoch
+        return self.timestamp == other.timestamp
 
     def __hash__ (self):
-        return self.epoch
+        return int (round (self.timestamp.timestamp ()))
 
     def __repr__ (self):
-        return time.strftime ('%Y-%m-%d %Hh', time.gmtime (self.epoch))
+        return self.timestamp.strftime ('%Y-%m-%d %Hh')
 
 
 #--------------------------------------------------------------------------
@@ -99,10 +104,8 @@ class TestTimestamp (unittest.TestCase):
 
     def test_timestamp_create (self):
 
-        t = time.localtime ()
-
-        s1 = Timestamp (t)
-        s2 = Timestamp (time.mktime (t))
+        s1 = Timestamp ()
+        s2 = Timestamp (datetime.utcnow ())
 
         self.assertEqual (s1, s2)
 
