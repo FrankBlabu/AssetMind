@@ -43,9 +43,9 @@ class Entry (ABC):
         self.source = source.lower () if source is not None else None
 
         if source is not None:
-            content = '{0}-{1}-{2}'.format (self.timestamp.epoch, id, source)
+            content = '{0}-{1}-{2}'.format (hash (self.timestamp), id, source)
         else:
-            content = '{0}-{1}'.format (self.timestamp.epoch, id)
+            content = '{0}-{1}'.format (hash (self.timestamp), id)
 
         h = hashlib.sha256 ()
         h.update (bytes (content, 'utf-8'))
