@@ -7,15 +7,12 @@
 
 import argparse
 import time
-import unittest
 
 import scraper.cryptocompare
 import scraper.twitter
 
 from database.database import Database
-from database.database import CoinEntry
 from core.time import Timestamp
-from scraper.scraper import Scraper
 
 #
 # This class is controlling the whole data acquisition. Its task is to trigger the registered
@@ -89,57 +86,6 @@ class Acquirer:
             if source_start != source_end or source_start not in timestamps:
                 source.run (database, source_start, source_end, None)
 
-#--------------------------------------------------------------------------
-# Unittests
-#
-class TestAcquirer (unittest.TestCase):
-
-    class TestScraper (Scraper):
-
-        def __init__ (self):
-            super ().__init__ ('TestScraper', CoinEntry.ID, ['TST'])
-
-            self.refresh = (None, None)
-
-        def run (self, database, start, end, log):
-            self.refresh = (start, end)
-
-    def test_gap_detection (self):
-
-        database = Database (':memory:')
-        database.create ()
-
-        database.add (CoinEntry ('2017-08-12 14:00', 'TST', 'test', 10.0, 'usd'))
-        database.add (CoinEntry ('2017-08-12 15:00', 'TST', 'test', 12.0, 'usd'))
-        database.add (CoinEntry ('2017-08-12 16:00', 'TST', 'test', 14.0, 'usd'))
-        database.add (CoinEntry ('2017-08-12 17:00', 'TST', 'test', 14.0, 'usd'))
-
-        database.commit ()
-
-        scraper = TestAcquirer.TestScraper ()
-
-        acquirer = Acquirer ()
-        acquirer.add_source (scraper)
-
-        scraper.refresh = (None, None)
-        acquirer.run (database, Timestamp ('2017-08-12 12:00'), Timestamp ('2017-08-12 16:00'))
-        self.assertEqual (scraper.refresh[0], Timestamp ('2017-08-12 12:00'))
-        self.assertEqual (scraper.refresh[1], Timestamp ('2017-08-12 13:00'))
-
-        scraper.refresh = (None, None)
-        acquirer.run (database, Timestamp ('2017-08-12 12:00'), Timestamp ('2017-08-12 17:00'))
-        self.assertEqual (scraper.refresh[0], Timestamp ('2017-08-12 12:00'))
-        self.assertEqual (scraper.refresh[1], Timestamp ('2017-08-12 13:00'))
-
-        scraper.refresh = (None, None)
-        acquirer.run (database, Timestamp ('2017-08-12 14:00'), Timestamp ('2017-08-12 19:00'))
-        self.assertEqual (scraper.refresh[0], Timestamp ('2017-08-12 18:00'))
-        self.assertEqual (scraper.refresh[1], Timestamp ('2017-08-12 19:00'))
-
-        scraper.refresh = (None, None)
-        acquirer.run (database, Timestamp ('2017-08-12 14:00'), Timestamp ('2017-08-12 17:00'))
-        self.assertEqual (scraper.refresh[0], None)
-        self.assertEqual (scraper.refresh[1], None)
 
 #----------------------------------------------------------------------------
 # MAIN
