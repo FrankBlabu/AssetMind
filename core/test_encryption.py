@@ -10,7 +10,7 @@ import os
 import random
 import unittest
 
-from database.encryption import Encryption
+from core.encryption import Encryption
 
 #----------------------------------------------------------------------------
 # CLASS TestEncryption

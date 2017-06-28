@@ -13,7 +13,7 @@ from database.database import StockEntry
 from database.database import NewsEntry
 from database.database import EncryptedEntry
 from database.database import Database
-from database.encryption import Encryption
+from core.encryption import Encryption
 from core.time import Timestamp
 
 

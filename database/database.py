@@ -12,7 +12,7 @@ import pandas as pd
 import sqlite3
 
 from abc import ABC, abstractmethod
-from database.encryption import Encryption
+from core.encryption import Encryption
 from core.time import Timestamp
 
 #--------------------------------------------------------------------------
