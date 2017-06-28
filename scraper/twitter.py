@@ -35,7 +35,7 @@ class TwitterScraper (Scraper):
 
     def __init__ (self):
 
-        super ().__init__ ('Twitter', NewsEntry, [TwitterScraper.DATABASE_ID])
+        super ().__init__ ('Twitter', NewsEntry.ID, [TwitterScraper.DATABASE_ID])
 
         emoticons_str = r"""
             (?:
@@ -119,10 +119,11 @@ class TwitterScraper (Scraper):
     # Run scraper for acquiring a set of entries
     #
     # @param database Database to be filled
-    # @param start    Start timestamp in UNIX epoch format or 'None' for maximum coverage
+    # @param start    Start timestamp (UTC)
+    # @param end      End timestamp (UTC)
     # @param log      Callback for logging outputs
     #
-    def run (self, database, start, log):
+    def run (self, database, start, end, log):
         credentials = self.get_credentials (database)
 
         server = twitter.Twitter (auth=twitter.OAuth (credentials['access_key'],

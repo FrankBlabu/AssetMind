@@ -27,7 +27,7 @@ class GDAXScraper (Scraper):
     selected_coins = ['ETH', 'BTC', 'LTC']
 
     def __init__ (self):
-        super ().__init__ ('GDAX', CoinEntry, GDAXScraper.selected_coins)
+        super ().__init__ ('GDAX', CoinEntry.ID, GDAXScraper.selected_coins)
 
     #
     # Scrape available information out of the GDAX API

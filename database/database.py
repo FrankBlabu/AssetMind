@@ -94,7 +94,7 @@ class CoinEntry (Entry):
     #
     # Initialize entry
     #
-    # @param timestamp Event timestamp in UTC unix epoch seconds
+    # @param timestamp Event timestamp (UTC)
     #
     def __init__ (self, timestamp, id, source, course, currency):
 
@@ -139,7 +139,7 @@ class CoinEntry (Entry):
 
         params = []
         params.append (self.hash)
-        params.append (self.timestamp.epoch)
+        params.append (hash (self.timestamp))
         params.append (self.id)
         params.append (self.source)
         params.append (self.course)
@@ -192,7 +192,7 @@ class CurrencyEntry (Entry):
     #
     # Initialize entry
     #
-    # @param timestamp Event timestamp in UTC unix epoch seconds
+    # @param timestamp Event timestamp (UTC))
     #
     def __init__ (self, timestamp, id, course):
 
@@ -228,7 +228,7 @@ class CurrencyEntry (Entry):
 
         params = []
         params.append (self.hash)
-        params.append (self.timestamp.epoch)
+        params.append (hash (self.timestamp))
         params.append (self.id)
         params.append (self.course)
 
@@ -276,7 +276,7 @@ class StockEntry (Entry):
     #
     # Initialize entry
     #
-    # @param timestamp Event timestamp in UTC unix epoch seconds
+    # @param timestamp Event timestamp (UTC)
     #
     def __init__ (self, timestamp, id, course):
 
@@ -311,7 +311,7 @@ class StockEntry (Entry):
 
         params = []
         params.append (self.hash)
-        params.append (self.timestamp.epoch)
+        params.append (hash (self.timestamp))
         params.append (self.id)
         params.append (self.course)
 
@@ -359,7 +359,7 @@ class NewsEntry (Entry):
     #
     # Initialize entry
     #
-    # @param timestamp Event timestamp in UTC unix epoch seconds
+    # @param timestamp Event timestamp (UTC)
     #
     def __init__ (self, timestamp, id, text, shares, likes):
 
@@ -401,7 +401,7 @@ class NewsEntry (Entry):
 
         params = []
         params.append (self.hash)
-        params.append (self.timestamp.epoch)
+        params.append (hash (self.timestamp))
         params.append (self.id)
         params.append (self.text)
         params.append (self.shares if self.shares is not None else -1)
@@ -459,7 +459,7 @@ class EncryptedEntry (Entry):
     #
     # Initialize entry
     #
-    # @param timestamp Event timestamp in UTC unix epoch seconds
+    # @param timestamp Event timestamp (UTC)
     # @param id        Id for this entry
     # @param text      Unencrypted text to keep
     #
@@ -503,7 +503,7 @@ class EncryptedEntry (Entry):
 
         params = []
         params.append (self.hash)
-        params.append (self.timestamp.epoch)
+        params.append (hash (self.timestamp))
         params.append (self.id)
         params.append (encryption.encrypt (self.text, database.password))
 
@@ -615,7 +615,7 @@ class Database:
 
         for t in Database.types:
             if table == t.ID:
-                entries = t.read_from_database (self, id)
+                entries = t.read_from_database (self, id.lower () if id is not None else None)
 
         if entries is None:
             raise RuntimeError ('Invalid database table id')

@@ -104,16 +104,30 @@ class TestTimestamp (unittest.TestCase):
 
     def test_timestamp_create (self):
 
+        #
+        # Timestamp for 'now' must be always in UTC time
+        #
         s1 = Timestamp ()
         s2 = Timestamp (datetime.utcnow ())
+        s3 = Timestamp (datetime.utcnow ().timestamp ())
 
         self.assertEqual (s1, s2)
+        self.assertEqual (s1, s3)
 
         s1 = Timestamp ('2017-04-21 14:00')
         s2 = Timestamp ('2017-04-21 14:30')
         s3 = Timestamp ('2017-04-21 14:59')
         s4 = Timestamp ('2017-04-21 15:00')
         s5 = Timestamp ('2017-04-22 14:30')
+
+        #
+        # Parsed dates must not be changes to other time zones
+        #
+        self.assertEqual (s1.timestamp.hour, 14)
+        self.assertEqual (s2.timestamp.hour, 14)
+        self.assertEqual (s3.timestamp.hour, 14)
+        self.assertEqual (s4.timestamp.hour, 15)
+        self.assertEqual (s5.timestamp.hour, 14)
 
         self.assertEqual (s1, s2)
         self.assertEqual (s1, s3)

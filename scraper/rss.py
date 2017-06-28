@@ -21,7 +21,7 @@ from database.database import NewsEntry
 class RSSScraper (Scraper):
 
     def __init__ (self):
-        super ().__init__ ('RSS generic', NewsEntry, [])
+        super ().__init__ ('RSS generic', NewsEntry.ID, [])
 
     def execute (self, database, args):
 

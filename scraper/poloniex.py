@@ -23,7 +23,7 @@ class PoloniexScraper (Scraper):
 
     def __init__ (self, api_key=None, secret=None):
 
-        super ().__init__ ('Poloniex', CoinEntry, [])
+        super ().__init__ ('Poloniex', CoinEntry.ID, [])
 
         self.api_key = api_key
         self.secret  = secret

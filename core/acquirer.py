@@ -7,12 +7,15 @@
 
 import argparse
 import time
+import unittest
 
 import scraper.cryptocompare
 import scraper.twitter
 
 from database.database import Database
+from database.database import CoinEntry
 from core.time import Timestamp
+from scraper.scraper import Scraper
 
 #
 # This class is controlling the whole data acquisition. Its task is to trigger the registered
@@ -41,25 +44,29 @@ class Acquirer:
     #
     # This function will try to fill the database as complete as possible
     #
-    def run (self, database):
+    def run (self, database, start=DATABASE_START_DATE, end=Timestamp ()):
 
-        start = Acquirer.DATABASE_START_DATE
-        end   = Timestamp (time.time ())
-
+        assert isinstance (start, Timestamp)
+        assert isinstance (end, Timestamp)
         assert start != end
 
-        print ('Filling/completing database from the {date} on'.format (date=start))
+        print ('Filling/completing database from {date} on'.format (date=start))
 
         for source in self.sources:
-            print ('Running {scraper}...'.format (scraper=source.name))
+            print ('Running {source}...'.format (source=source.name))
 
             #
-            # Query database for all points in time this scraper already got data for
+            # Query database for all points in time this scraper (or any other filling the
+            # same database slots) already got data for. Afterwards, the set of timestamps
+            # will contain entries for all points in time where the scraper provided
+            # complete data. If any id has missing content, we assume to be a hole there
+            # because the scraper might only be able to retrieve the data in a block for all
+            # ids.
             #
             timestamps = None
 
-            for id in source.handled_ids:
-                entries = database.get_entries (source.entry_type.ID, id)
+            for id in source.ids:
+                entries = database.get_entries (source.type_id, id)
 
                 if timestamps is None:
                     timestamps = set ([entry.timestamp for entry in entries])
@@ -67,7 +74,7 @@ class Acquirer:
                     timestamps &= set ([entry.timestamp for entry in entries])
 
             #
-            # Compute interval (first missing and last missing entry) which are still
+            # Compute interval (first missing and last missing entry) which is still
             # in need of data
             #
             source_start = start
@@ -80,10 +87,59 @@ class Acquirer:
                 source_end.advance (hours=-1)
 
             if source_start != source_end or source_start not in timestamps:
-                print ("* Refresh: ", source_start, source_end)
+                source.run (database, source_start, source_end, None)
 
-            #source.run (database, start, lambda message: print ('  ' + message))
+#--------------------------------------------------------------------------
+# Unittests
+#
+class TestAcquirer (unittest.TestCase):
 
+    class TestScraper (Scraper):
+
+        def __init__ (self):
+            super ().__init__ ('TestScraper', CoinEntry.ID, ['TST'])
+
+            self.refresh = (None, None)
+
+        def run (self, database, start, end, log):
+            self.refresh = (start, end)
+
+    def test_gap_detection (self):
+
+        database = Database (':memory:')
+        database.create ()
+
+        database.add (CoinEntry ('2017-08-12 14:00', 'TST', 'test', 10.0, 'usd'))
+        database.add (CoinEntry ('2017-08-12 15:00', 'TST', 'test', 12.0, 'usd'))
+        database.add (CoinEntry ('2017-08-12 16:00', 'TST', 'test', 14.0, 'usd'))
+        database.add (CoinEntry ('2017-08-12 17:00', 'TST', 'test', 14.0, 'usd'))
+
+        database.commit ()
+
+        scraper = TestAcquirer.TestScraper ()
+
+        acquirer = Acquirer ()
+        acquirer.add_source (scraper)
+
+        scraper.refresh = (None, None)
+        acquirer.run (database, Timestamp ('2017-08-12 12:00'), Timestamp ('2017-08-12 16:00'))
+        self.assertEqual (scraper.refresh[0], Timestamp ('2017-08-12 12:00'))
+        self.assertEqual (scraper.refresh[1], Timestamp ('2017-08-12 13:00'))
+
+        scraper.refresh = (None, None)
+        acquirer.run (database, Timestamp ('2017-08-12 12:00'), Timestamp ('2017-08-12 17:00'))
+        self.assertEqual (scraper.refresh[0], Timestamp ('2017-08-12 12:00'))
+        self.assertEqual (scraper.refresh[1], Timestamp ('2017-08-12 13:00'))
+
+        scraper.refresh = (None, None)
+        acquirer.run (database, Timestamp ('2017-08-12 14:00'), Timestamp ('2017-08-12 19:00'))
+        self.assertEqual (scraper.refresh[0], Timestamp ('2017-08-12 18:00'))
+        self.assertEqual (scraper.refresh[1], Timestamp ('2017-08-12 19:00'))
+
+        scraper.refresh = (None, None)
+        acquirer.run (database, Timestamp ('2017-08-12 14:00'), Timestamp ('2017-08-12 17:00'))
+        self.assertEqual (scraper.refresh[0], None)
+        self.assertEqual (scraper.refresh[1], None)
 
 #----------------------------------------------------------------------------
 # MAIN
