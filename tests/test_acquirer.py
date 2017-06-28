@@ -29,7 +29,7 @@ class TestScraper (Scraper):
 
         self.refresh = (None, None)
 
-    def run (self, database, start, end, log):
+    def run (self, database, start, end, interval, log):
         self.refresh = (start, end)
 
 #--------------------------------------------------------------------------

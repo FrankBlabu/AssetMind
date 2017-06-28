@@ -121,9 +121,10 @@ class TwitterScraper (Scraper):
     # @param database Database to be filled
     # @param start    Start timestamp (UTC)
     # @param end      End timestamp (UTC)
+    # @param interval Interval of scraping
     # @param log      Callback for logging outputs
     #
-    def run (self, database, start, end, log):
+    def run (self, database, start, end, interval, log):
         credentials = self.get_credentials (database)
 
         server = twitter.Twitter (auth=twitter.OAuth (credentials['access_key'],

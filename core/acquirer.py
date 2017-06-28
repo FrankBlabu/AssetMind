@@ -8,6 +8,7 @@
 import argparse
 import time
 
+from scraper.scraper import Scraper
 import scraper.cryptocompare
 import scraper.twitter
 
@@ -47,11 +48,7 @@ class Acquirer:
         assert isinstance (end, Timestamp)
         assert start != end
 
-        print ('Filling/completing database from {date} on'.format (date=start))
-
         for source in self.sources:
-            print ('Running {source}...'.format (source=source.name))
-
             #
             # Query database for all points in time this scraper (or any other filling the
             # same database slots) already got data for. Afterwards, the set of timestamps
@@ -84,7 +81,7 @@ class Acquirer:
                 source_end.advance (hours=-1)
 
             if source_start != source_end or source_start not in timestamps:
-                source.run (database, source_start, source_end, None)
+                source.run (database, source_start, source_end, Scraper.Interval.HOURLY, None)
 
 
 #----------------------------------------------------------------------------
@@ -108,6 +105,6 @@ if __name__ == '__main__':
     acquirer = Acquirer ()
 
     acquirer.add_source (scraper.cryptocompare.CryptoCompareScraper ())
-    acquirer.add_source (scraper.twitter.TwitterScraper ())
+    #acquirer.add_source (scraper.twitter.TwitterScraper ())
 
     acquirer.run (database)

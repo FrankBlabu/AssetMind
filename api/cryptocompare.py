@@ -4,7 +4,11 @@
 #
 # Frank Blankenburg, Jun. 2017
 #
+# Resources:
+# * https://www.cryptocompare.com/api
+#
 
+import pandas as pd
 import json
 import urllib
 import urllib.request
@@ -27,8 +31,13 @@ class CryptoCompare:
         command = 'https://www.cryptocompare.com/api/data/coinlist'
         return self.query (command)['Data']
 
+    def get_coin_snapshot (self, id):
+        command = 'https://www.cryptocompare.com/api/data/coinsnapshot?fsym={0}&tsym=USD'.format (self.id_as_list (id))
+        print (command)
+        return self.query (command)
+
     def get_price (self, id):
-        command = 'https://min-api.cryptocompare.com/data/pricemulti?fsyms={0}&tsyms=BTC,USD,EUR'.format (self.id_as_list (id))
+        command = 'https://min-api.cryptocompare.com/data/pricemulti?fsyms={0}&tsyms=USD'.format (self.id_as_list (id))
         return self.query (command)
 
     def get_average_price (self, id):
@@ -86,9 +95,22 @@ class CryptoCompare:
 # MAIN
 #
 if __name__ == '__main__':
-    client = CryptoCompare ()
 
-    entries = client.get_historical_prices ('ETH', CryptoCompare.Interval.HOUR)
-    print ('{n} entries'.format (n=len (entries)))
-    print (Timestamp (entries[0]['time']))
-    print (Timestamp (entries[-1]['time']))
+    client = CryptoCompare ()
+    coins = client.get_coin_list ()
+
+    frame = pd.DataFrame (columns=['Id', 'Name', 'Algorithm', 'Proof Type', 'Total supply', 'Pre mined'])
+
+    for key in sorted (coins.keys ()):
+        entry = coins[key]
+        frame.loc[len (frame)] = [key.strip (),
+                                  entry['CoinName'].strip (),
+                                  entry['Algorithm'].strip (),
+                                  entry['ProofType'].strip (),
+                                  entry['TotalCoinSupply'].strip (),
+                                  'Yes' if entry['FullyPremined'] != '0' else 'No']
+
+    print (frame.to_string ())
+
+    snapshot = client.get_coin_snapshot ('ETH')
+    print (snapshot)
