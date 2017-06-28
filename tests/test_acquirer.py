@@ -5,12 +5,7 @@
 # Frank Blankenburg, Jun. 2017
 #
 
-import argparse
-import time
 import unittest
-
-import scraper.cryptocompare
-import scraper.twitter
 
 from database.database import Database
 from database.database import CoinEntry

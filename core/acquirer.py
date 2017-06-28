@@ -6,7 +6,6 @@
 #
 
 import argparse
-import time
 
 from scraper.scraper import Scraper
 import scraper.cryptocompare

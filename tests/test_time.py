@@ -5,7 +5,6 @@
 # Frank Blankenburg, Jun. 2017
 #
 
-import time
 import unittest
 
 from core.time import Timestamp

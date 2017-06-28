@@ -8,7 +8,6 @@
 import argparse
 import codecs
 import feedparser
-import sys
 import time
 
 from scraper.scraper import Scraper

@@ -14,7 +14,6 @@ import urllib
 import urllib.request
 
 from enum import Enum
-from core.time import Timestamp
 
 #--------------------------------------------------------------------------
 # Interface for accessing the Cryptocompare web API

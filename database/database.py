@@ -83,6 +83,7 @@ class Entry (ABC):
         pass
 
 
+
 #--------------------------------------------------------------------------
 # Container representing a single course entry for a single coin
 #
