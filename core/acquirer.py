@@ -81,7 +81,8 @@ class Acquirer:
                 source_end.advance (hours=-1)
 
             if source_start != source_end or source_start not in timestamps:
-                source.run (database, source_start, source_end, Interval.hour, None)
+                source.run (database, source_start, source_end, Interval.hour,
+                            lambda text: print ('{0}: {1}'.format (source.name, text)))
 
 
 #----------------------------------------------------------------------------

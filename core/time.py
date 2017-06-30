@@ -65,6 +65,12 @@ class Timestamp:
                 self.timestamp -= delta
 
     #
+    # Return timestamp in UNIX epoch seconds
+    #
+    def epoch (self):
+        return int (round (self.timestamp.timestamp ()))
+
+    #
     # Return current time (in UTC)
     #
     @staticmethod
@@ -85,8 +91,20 @@ class Timestamp:
     def __lt__ (self, other):
         return self.timestamp < other.timestamp
 
+    def __le__ (self, other):
+        return self.timestamp <= other.timestamp
+
     def __eq__ (self, other):
         return self.timestamp == other.timestamp
+
+    def __ne__ (self, other):
+        return self.timestamp != other.timestamp
+
+    def __ge__ (self, other):
+        return self.timestamp >= other.timestamp
+
+    def __gt__ (self, other):
+        return self.timestamp > other.timestamp
 
     def __hash__ (self):
         return int (round (self.timestamp.timestamp ()))

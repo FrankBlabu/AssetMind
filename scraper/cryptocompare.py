@@ -37,9 +37,48 @@ class CryptoCompareScraper (Scraper):
     #
     def run (self, database, start, end, interval, log):
 
-        print (start, end, interval)
+        print ('Run, from={start}, to={end}, interval={interval}'.format (start=start, end=end, interval=interval.name))
 
-        pass
+        assert isinstance (start, Timestamp)
+        assert isinstance (end, Timestamp)
+        assert isinstance (interval, Interval)
+
+        def add_to_log (message):
+            if log is not None:
+                log (message)
+
+        client = api.cryptocompare.CryptoCompare ()
+
+        #
+        # Iterate over each coin and try to gather the required information
+        #
+        for coin in CryptoCompareScraper.selected_coins:
+
+            add_to_log ('Scraping information for {coin}'.format (coin=coin))
+
+            #
+            # We are scraping backwards in time because th CryptoCompare API will only
+            # support a 'to timestamp' parameter.
+            #
+            to = end
+
+            ok = True
+            while ok and to >= start:
+
+                add_to_log ('Fetching information for {coin} until {to}'.format (coin=coin, to=to))
+
+                prices = client.get_historical_prices (id=coin, to=to, interval=interval)
+                ok = False
+
+                for price in prices:
+                    price_time = Timestamp (price['time'])
+                    database.add (CoinEntry (price_time, coin, 'ccmp', (price['high'] + price['low']) / 2, 'usd'))
+
+                    if price_time < to:
+                        to = price_time
+                        ok = True
+
+                to.advance (hours=-1)
 
     #
     # Scrape available information out of the GDAX API

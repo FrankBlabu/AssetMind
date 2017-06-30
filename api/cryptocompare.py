@@ -27,8 +27,17 @@ from core.time import Timestamp
 #
 class CryptoCompare:
 
+    #
+    # Configuration
+    #
+    # markers  - List of markers to be queried
+    # currency - Target currency
+    # limit    - Maximum number of entries requested with a single web API call
+    #
     #markets = ['Poloniex', 'Kraken', 'Coinbase', 'HitBTC']
-    markets = ['Poloniex']
+    markets  = ['Poloniex']
+    currency = 'USD'
+    limit    = 2000
 
     def __init__ (self):
         pass
@@ -38,31 +47,36 @@ class CryptoCompare:
         return self.query (command)['Data']
 
     def get_coin_snapshot (self, id):
-        command = 'https://www.cryptocompare.com/api/data/coinsnapshot?fsym={0}&tsym=USD'.format (self.id_as_list (id))
-        print (command)
+        command = 'https://www.cryptocompare.com/api/data/coinsnapshot?fsym={id}&tsym={currency}' \
+        .format (id=self.id_as_list (id), currency=currency)
         return self.query (command)
 
     def get_price (self, id):
-        command = 'https://min-api.cryptocompare.com/data/pricemulti?fsyms={0}&tsyms=USD'.format (self.id_as_list (id))
+        command = 'https://min-api.cryptocompare.com/data/pricemulti?fsyms={id}&tsyms={currency}' \
+        .format (id=self.id_as_list (id), currency=currency)
         return self.query (command)
 
     def get_average_price (self, id):
-        command = 'https://min-api.cryptocompare.com/data/dayAvg?fsym={0}&tsym=USD&UTCHourDiff=-8'.format (id)
+        command = 'https://min-api.cryptocompare.com/data/dayAvg?fsym={id}&tsym={currency}&UTCHourDiff=-8' \
+        .format (id=self.id_as_list (id), currency=currency)
         return self.query (command)['USD']
 
     def get_trading_info (self, id):
-        command = 'https://min-api.cryptocompare.com/data/generateAvg?fsym={source}&tsym=USD&markets={markets}' \
-            .format (source=id, markets=self.id_as_list (CryptoCompare.markets))
+        command = 'https://min-api.cryptocompare.com/data/generateAvg?fsym={id}&tsym={currency}&markets={markets}' \
+            .format (id=id, currency=currency, markets=self.id_as_list (CryptoCompare.markets))
         return self.query (command)['RAW']
 
-    def get_historical_prices (self, id, timestamp, interval):
+    def get_historical_prices (self, id, to, interval):
 
-        assert isinstance (timestamp, Timestamp)
+        assert isinstance (to, Timestamp)
         assert isinstance (id, str)
         assert isinstance (interval, Interval)
 
-        command = 'https://min-api.cryptocompare.com/data/histo{interval}?fsym={id}'
-        command += '&tsym=USD&markets={markets}&limit=2000'
+        command = 'https://min-api.cryptocompare.com/data/histo{interval}'.format (interval=interval.name)
+        command += '?fsym={id}'.format (id=id)
+        command += '&tsym=USD&markets={markets}'.format (markets=self.id_as_list (CryptoCompare.markets))
+        command += '&limit={limit}'.format (limit=CryptoCompare.limit)
+        command += '&toTs={timestamp}'.format (timestamp=to.epoch ())
         command = command.format (interval=interval.name, id=id, markets=self.id_as_list (CryptoCompare.markets))
 
         return self.query (command)['Data']
@@ -78,12 +92,7 @@ class CryptoCompare:
         ids = id
 
         if isinstance (id, list):
-            ids = ''
-            separator = ''
-
-            for i in id:
-                ids += separator + i.strip ()
-                separator = ','
+            ids = ','.join ([i.strip () for i in id])
 
         return ids
 
@@ -93,7 +102,7 @@ class CryptoCompare:
 def test_historical_prices ():
 
     client = CryptoCompare ()
-    prices = client.get_historical_prices ('ETH', Timestamp (), Interval.day)
+    prices = client.get_historical_prices ('ETH', Timestamp ('2016-04-08 06:00'), Interval.hour)
 
     print (len (prices))
 
