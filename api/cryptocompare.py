@@ -21,9 +21,19 @@ from enum import Enum
 from core.common import Interval
 from core.time import Timestamp
 
+#--------------------------------------------------------------------------
+# CLASS HTTPError
+#
+# Generic exception object for errors originating from the CryptoCompare API
+#
+class HTTPError (Exception):
+
+    def __init__ (self, message):
+        self.message = message
+
 
 #--------------------------------------------------------------------------
-# Interface for accessing the Cryptocompare web API
+# CLASS CryptoCompare
 #
 class CryptoCompare:
 
@@ -79,11 +89,22 @@ class CryptoCompare:
         command += '&toTs={timestamp}'.format (timestamp=to.epoch ())
         command = command.format (interval=interval.name, id=id, markets=self.id_as_list (CryptoCompare.markets))
 
-        return self.query (command)['Data']
+        print (command)
+
+        r = self.query (command)
+        return r['Data']
 
     def query (self, command):
-        ret = urllib.request.urlopen (urllib.request.Request (command))
-        return json.loads (ret.read ().decode ('utf8'))
+
+        result = None
+
+        with urllib.request.urlopen (urllib.request.Request (command)) as response:
+            result = json.loads (response.read ().decode ('utf8'))
+
+        if 'Response' in result and result['Response'] == 'Error':
+            raise HTTPError (result['Message'])
+
+        return result
 
     #
     # Convert list of ids into a query compatible comma separated list
@@ -128,8 +149,18 @@ def test_coin_list ():
 
     print (frame.to_string ())
 
+def test_error ():
+
+    client = CryptoCompare ()
+
+    try:
+        prices = client.get_historical_prices ('XYZ', Timestamp ('2016-04-08 06:00'), Interval.hour)
+    except HTTPError as e:
+        print ('ERROR:', e.message)
+
+
 #--------------------------------------------------------------------------
 # MAIN
 #
 if __name__ == '__main__':
-    test_historical_prices ()
+    test_error ()

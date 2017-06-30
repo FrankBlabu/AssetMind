@@ -60,25 +60,29 @@ class CryptoCompareScraper (Scraper):
             # We are scraping backwards in time because th CryptoCompare API will only
             # support a 'to timestamp' parameter.
             #
-            to = end
+            try:
+                to = end
 
-            ok = True
-            while ok and to >= start:
+                ok = True
+                while ok and to >= start:
 
-                add_to_log ('Fetching information for {coin} until {to}'.format (coin=coin, to=to))
+                    add_to_log ('Fetching information for {coin} until {to}'.format (coin=coin, to=to))
 
-                prices = client.get_historical_prices (id=coin, to=to, interval=interval)
-                ok = False
+                    prices = client.get_historical_prices (id=coin, to=to, interval=interval)
+                    ok = False
 
-                for price in prices:
-                    price_time = Timestamp (price['time'])
-                    database.add (CoinEntry (price_time, coin, 'ccmp', (price['high'] + price['low']) / 2, 'usd'))
+                    for price in prices:
+                        price_time = Timestamp (price['time'])
+                        database.add (CoinEntry (price_time, coin, 'ccmp', (price['high'] + price['low']) / 2, 'usd'))
 
-                    if price_time < to:
-                        to = price_time
-                        ok = True
+                        if price_time < to:
+                            to = price_time
+                            ok = True
 
-                to.advance (hours=-1)
+                    to.advance (hours=-1)
+
+            except api.cryptocompare.HTTPError as e:
+                add_to_log ('ERROR: {error}'.format (error=e.message))
 
     #
     # Scrape available information out of the GDAX API
