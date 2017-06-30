@@ -13,10 +13,6 @@ from enum import Enum
 #
 class Scraper (ABC):
 
-    class Interval (Enum):
-        HOURLY = 1,
-        DAILY  = 2
-
     #
     # Constructor
     #

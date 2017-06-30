@@ -12,6 +12,7 @@ import scraper.cryptocompare
 import scraper.twitter
 
 from database.database import Database
+from core.common import Interval
 from core.time import Timestamp
 
 #
@@ -80,7 +81,7 @@ class Acquirer:
                 source_end.advance (hours=-1)
 
             if source_start != source_end or source_start not in timestamps:
-                source.run (database, source_start, source_end, Scraper.Interval.HOURLY, None)
+                source.run (database, source_start, source_end, Interval.hour, None)
 
 
 #----------------------------------------------------------------------------

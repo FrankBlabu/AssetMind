@@ -10,6 +10,7 @@ import pandas as pd
 
 import api.cryptocompare
 
+from core.common import Interval
 from core.time import Timestamp
 from database.database import Database
 from database.database import CoinEntry
@@ -51,7 +52,7 @@ class CryptoCompareScraper (Scraper):
 
             print (coin)
 
-            prices = client.get_historical_prices (id=coin, interval=api.cryptocompare.CryptoCompare.Interval.DAY)
+            prices = client.get_historical_prices (id=coin, interval=Interval.day)
 
             for price in prices:
                 database.add (CoinEntry (price['time'], coin, 'ccmp', (price['high'] + price['low']) / 2, 'usd'))

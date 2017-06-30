@@ -7,6 +7,10 @@
 # Resources:
 # * https://www.cryptocompare.com/api
 #
+# Concstraints:
+# * Cryptocompare server allows 1000 requests/hour only
+# * One request every 10s is regarded as ok (but not limited to that value)
+#
 
 import pandas as pd
 import json
@@ -14,6 +18,9 @@ import urllib
 import urllib.request
 
 from enum import Enum
+from core.common import Interval
+from core.time import Timestamp
+
 
 #--------------------------------------------------------------------------
 # Interface for accessing the Cryptocompare web API
@@ -48,24 +55,15 @@ class CryptoCompare:
             .format (source=id, markets=self.id_as_list (CryptoCompare.markets))
         return self.query (command)['RAW']
 
-    class Interval (Enum):
-        DAY    = 1
-        HOUR   = 2
-        MINUTE = 3
+    def get_historical_prices (self, id, timestamp, interval):
 
-    def get_historical_prices (self, id, interval):
+        assert isinstance (timestamp, Timestamp)
+        assert isinstance (id, str)
+        assert isinstance (interval, Interval)
 
-        if interval is CryptoCompare.Interval.DAY:
-            interval_id = 'day'
-        elif interval is CryptoCompare.Interval.HOUR:
-            interval_id = 'hour'
-        elif interval is CryptoCompare.Interval.MINUTE:
-            interval_id = 'minute'
-        else:
-            raise RunimeError ('Unknown enum id \'{0}\''.format (interval.name))
-
-        command = 'https://min-api.cryptocompare.com/data/histo{interval}?fsym={id}&tsym=USD&limit=2000' \
-        .format (interval=interval_id, id=id)
+        command = 'https://min-api.cryptocompare.com/data/histo{interval}?fsym={id}'
+        command += '&tsym=USD&markets={markets}&limit=2000'
+        command = command.format (interval=interval.name, id=id, markets=self.id_as_list (CryptoCompare.markets))
 
         return self.query (command)['Data']
 
@@ -89,13 +87,23 @@ class CryptoCompare:
 
         return ids
 
-
 #--------------------------------------------------------------------------
-# MAIN
+# API test functions
 #
-if __name__ == '__main__':
+def test_historical_prices ():
 
     client = CryptoCompare ()
+    prices = client.get_historical_prices ('ETH', Timestamp (), Interval.day)
+
+    print (len (prices))
+
+    print (Timestamp (prices[1]['time']))
+    print (Timestamp (prices[-1]['time']))
+
+
+def test_coin_list ():
+    client = CryptoCompare ()
+
     coins = client.get_coin_list ()
 
     frame = pd.DataFrame (columns=['Id', 'Name', 'Algorithm', 'Proof Type', 'Total supply', 'Pre mined'])
@@ -111,5 +119,8 @@ if __name__ == '__main__':
 
     print (frame.to_string ())
 
-    snapshot = client.get_coin_snapshot ('ETH')
-    print (snapshot)
+#--------------------------------------------------------------------------
+# MAIN
+#
+if __name__ == '__main__':
+    test_historical_prices ()
