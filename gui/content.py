@@ -4,10 +4,14 @@
 #
 # Frank Blankenburg, Jun. 2017
 #
+
 import argparse
+import copy
 import numpy as np
 import math
+import matplotlib as mpl
 import matplotlib.pyplot as plt
+import matplotlib.colors
 import pandas as pd
 import time
 
@@ -18,6 +22,23 @@ from core.common import Interval
 from core.time import Timestamp
 from database.database import Database
 
+
+
+#----------------------------------------------------------------------------
+# CLASS TimestampFormatter
+#
+class TimestampFormatter (mpl.ticker.OldScalarFormatter):
+
+    def __init__ (self, start, step):
+        self.start = start
+        self.step = step
+
+    def __call__ (self, x, pos=None):
+
+        t = copy.copy (self.start)
+        t.advance (step=int (x) * step)
+
+        return t
 
 #----------------------------------------------------------------------------
 # MAIN
@@ -69,6 +90,8 @@ if __name__ == '__main__':
 
         ids.extend (list (zip (len (entry_ids) * [t.ID], list (entry_ids))))
 
+    ids = sorted (ids)
+
     #
     # Build array showing the sampling state
     #
@@ -92,16 +115,31 @@ if __name__ == '__main__':
         for x in range (number_of_steps):
             state[y][x] = 1.0 if t in timestamps else 0.0
             t += step
+    #
+    # Setup custom discrete colormap
+    #
+    cmap = mpl.colors.ListedColormap (['white', 'green'])
+    norm = mpl.colors.BoundaryNorm ([0, 0.5, 1.0], cmap.N)
 
-    # XXX
-    #state = np.random.rand (state.shape[0], state.shape[1])
+    fig, axis = plt.subplots ()
 
-    fig = plt.figure ()
+    #
+    # Configure diagram axes
+    #
+    axis.set_xlabel ('Timestamp')
+    axis.set_ylabel ('Dataset')
+    axis.xaxis.set_major_formatter (TimestampFormatter (minimum_timestamp, step))
 
-    plt.imshow (state, interpolation=None, cmap=None, aspect='auto')
+    plt.yticks (range (len (ids)), ['{0} ({1})'.format (id[1], id[0]) for id in ids], rotation='horizontal')
+
+    #
+    # Display content diagram
+    #
+    plt.imshow (state, interpolation='nearest', cmap=cmap, norm=norm, aspect='auto')
     plt.colorbar ()
 
     fig.tight_layout ()
+    fig.autofmt_xdate ()
 
     def onresize (event):
         plt.tight_layout ()
