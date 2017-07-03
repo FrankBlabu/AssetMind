@@ -8,6 +8,8 @@
 import dateutil.parser
 import pandas as pd
 
+from core.config import Configuration
+from core.common import Interval
 from datetime import datetime
 from datetime import timedelta
 
@@ -43,12 +45,21 @@ class Timestamp:
         else:
             raise RuntimeError ('Unhandled time format type \'{typename}\''. format (typename=type (value).__name__))
 
-        self.timestamp = self.timestamp.replace (minute=0, second=0, microsecond=0)
+        if Configuration.DATABASE_SAMPLING_INTERVAL is Interval.day:
+            self.timestamp = self.timestamp.replace (hour=0, minute=0, second=0, microsecond=0)
+        elif Configuration.DATABASE_SAMPLING_INTERVAL is Interval.hour:
+            self.timestamp = self.timestamp.replace (minute=0, second=0, microsecond=0)
+        elif Configuration.DATABASE_SAMPLING_INTERVAL is Interval.minute:
+            self.timestamp = self.timestamp.replace (second=0, microsecond=0)
 
     #
     # Advance time by some days / hours
     #
-    def advance (self, days=None, hours=None):
+    def advance (self, days=None, hours=None, step=None):
+
+        if step is not None:
+            assert isinstance (step, timedelta)
+            self.timestamp += step
 
         if days is not None:
             delta = timedelta (days=abs (days))
@@ -75,7 +86,7 @@ class Timestamp:
     #
     @staticmethod
     def now ():
-        return Timestamp (datetime.utcnow ())
+        return Timestamp ()
 
     #
     # Convert timestamp into a string matching the given format

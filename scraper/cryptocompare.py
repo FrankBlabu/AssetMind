@@ -79,7 +79,7 @@ class CryptoCompareScraper (Scraper):
                             to = price_time
                             ok = True
 
-                    to.advance (hours=-1)
+                    to.advance (step=-Configuration.DATABASE_SAMPLING_STEP)
 
             except api.cryptocompare.HTTPError as e:
                 add_to_log ('ERROR: {error}'.format (error=e.message))
@@ -95,7 +95,7 @@ class CryptoCompareScraper (Scraper):
 
             print (coin)
 
-            prices = client.get_historical_prices (id=coin, interval=Interval.day)
+            prices = client.get_historical_prices (id=coin, interval=Configuration.DATABASE_SAMPLING_INTERVAL)
 
             for price in prices:
                 database.add (CoinEntry (price['time'], coin, 'ccmp', (price['high'] + price['low']) / 2, 'usd'))

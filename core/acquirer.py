@@ -14,6 +14,7 @@ import scraper.twitter
 from database.database import Database
 from core.common import Interval
 from core.time import Timestamp
+from core.config import Configuration
 
 #
 # This class is controlling the whole data acquisition. Its task is to trigger the registered
@@ -21,12 +22,6 @@ from core.time import Timestamp
 # get.
 #
 class Acquirer:
-
-    #
-    # Earliest date captured in the database. The scrapers will try to gather as much data as
-    # possible starting from this point in time on to the current time.
-    #
-    DATABASE_START_DATE = Timestamp ('2012-1-1')
 
     def __init__ (self):
         self.sources = []
@@ -42,7 +37,7 @@ class Acquirer:
     #
     # This function will try to fill the database as complete as possible
     #
-    def run (self, database, start=DATABASE_START_DATE, end=Timestamp ()):
+    def run (self, database, start=Timestamp (Configuration.DATABASE_START_DATE), end=Timestamp ()):
 
         assert isinstance (start, Timestamp)
         assert isinstance (end, Timestamp)
@@ -75,13 +70,13 @@ class Acquirer:
             source_end = end
 
             while source_start < source_end and source_start in timestamps:
-                source_start.advance (hours=1)
+                source_start.advance (step=+Configuration.DATABASE_SAMPLING_STEP)
 
             while source_end > source_start and source_end in timestamps:
-                source_end.advance (hours=-1)
+                source_end.advance (step=-Configuration.DATABASE_SAMPLING_STEP)
 
             if source_start != source_end or source_start not in timestamps:
-                source.run (database, source_start, source_end, Interval.hour,
+                source.run (database, source_start, source_end, Configuration.DATABASE_SAMPLING_INTERVAL,
                             lambda text: print ('{0}: {1}'.format (source.name, text)))
 
 

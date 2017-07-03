@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 #
-# plot.py - Plot database content
+# plot.py - Plot numeric database content
 #
 # Frank Blankenburg, Jun. 2017
 #

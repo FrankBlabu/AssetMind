@@ -7,9 +7,13 @@
 
 import unittest
 
+from datetime import timedelta
+
 from database.database import Database
 from database.database import CoinEntry
 from core.acquirer import Acquirer
+from core.config import Configuration
+from core.common import Interval
 from core.time import Timestamp
 from scraper.scraper import Scraper
 
@@ -32,7 +36,14 @@ class TestScraper (Scraper):
 #
 class TestAcquirer (unittest.TestCase):
 
+    #
+    # Test if the acquirer detects the correct gaps in the sampled timestamps
+    #
     def test_gap_detection (self):
+
+        Configuration.DATABASE_SAMPLING_INTERVAL = Interval.hour
+        Configuration.DATABASE_SAMPLING_STEP = timedelta (hours=1)
+
 
         database = Database (':memory:')
         database.create ()

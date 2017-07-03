@@ -10,16 +10,14 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import time
 
+from core.config import Configuration
+from core.time import Timestamp
 from database.database import Database
-
 
 
 #----------------------------------------------------------------------------
 # MAIN
 #
-def to_timestamp (seconds):
-    return pd.to_datetime (seconds, unit='s')
-
 if __name__ == '__main__':
 
     #
@@ -38,8 +36,17 @@ if __name__ == '__main__':
     # Fetch all entries from database and compute earliest entry. The latest entry is
     # always expected to be at the current date.
     #
-    minimum_timestamp = None
-    maximum_timestamp = to_timestamp (time.mktime (time.localtime ()))
+    minimum_timestamp = Timestamp (Configuration.DATABASE_START_DATE)
+    maximum_timestamp = Timestamp.now ()
+
+    diff = maximum_timestamp - minimum_timestamp
+
+    if Configuration.DATABASE_SAMPLING_INTERVAL is Interval.day:
+        number_of_steps = abs (diff.days)
+    elif Configuration.DATABASE_SAMPLING_INTERVAL is Interval.hour:
+        number_of_steps = int (floor (abs (diff.days) * 24 + abs (diff.seconds) / 60 / 60))
+    elif Configuration.DATABASE_SAMPLING_INTERVAL is Interval.minute:
+        number_of_steps = int (floor (abs (diff.days) * 24 * 60 + abs (diff.seconds) / 60))
 
     for t in Database.types:
 
@@ -48,7 +55,7 @@ if __name__ == '__main__':
 
         for id in ids:
             id_entries = [e for e in entries if e.id == id]
-            times = [to_timestamp (t.timestamp) for t in id_entries]
+            times = [t.timestamp for t in id_entries]
 
             minimum_timestamp = min (minimum_timestamp, min (times)) if minimum_timestamp is not None else min (times)
 

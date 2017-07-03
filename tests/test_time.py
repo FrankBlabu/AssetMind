@@ -9,6 +9,7 @@ import unittest
 
 from core.time import Timestamp
 from datetime import datetime
+from datetime import timedelta
 
 
 #--------------------------------------------------------------------------
@@ -73,3 +74,15 @@ class TestTimestamp (unittest.TestCase):
         s = Timestamp ('2017-02-17 23:00')
         s.advance (days=-5, hours=+2)
         self.assertEqual (s, Timestamp ('2017-02-13 01:00'))
+
+        s = Timestamp ('2017-02-19 22:00')
+        s.advance (step=timedelta (hours=+1))
+        self.assertEqual (s, Timestamp ('2017-02-19 23:00'))
+        s.advance (step=timedelta (hours=+1))
+        self.assertEqual (s, Timestamp ('2017-02-20 00:00'))
+        s.advance (step=timedelta (hours=+1))
+        self.assertEqual (s, Timestamp ('2017-02-20 01:00'))
+        s.advance (step=timedelta (hours=-1))
+        self.assertEqual (s, Timestamp ('2017-02-20 00:00'))
+        s.advance (step=timedelta (hours=-1))
+        self.assertEqual (s, Timestamp ('2017-02-19 23:00'))
