@@ -99,6 +99,14 @@ class Timestamp:
     def to_pandas (self):
         return pd.Timestamp (self.timestamp)
 
+    def __add__ (self, other):
+        assert isinstance (other, timedelta)
+        return Timestamp (self.timestamp + other)
+
+    def __sub__ (self, other):
+        assert isinstance (other, Timestamp)
+        return self.timestamp - other.timestamp
+
     def __lt__ (self, other):
         return self.timestamp < other.timestamp
 
