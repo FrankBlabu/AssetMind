@@ -37,11 +37,17 @@ class Acquirer:
     #
     # This function will try to fill the database as complete as possible
     #
-    def run (self, database, start=Timestamp (Configuration.DATABASE_START_DATE), end=Timestamp ()):
+    def run (self, database, start=Timestamp (Configuration.DATABASE_START_DATE), end=Timestamp (), log=None):
 
         assert isinstance (start, Timestamp)
         assert isinstance (end, Timestamp)
         assert start != end
+
+        def add_to_log (text):
+            if log is not None:
+                log (text)
+
+        add_to_log ('Starting database acquistion')
 
         for source in self.sources:
             #
@@ -53,6 +59,8 @@ class Acquirer:
             # ids.
             #
             timestamps = None
+
+            add_to_log ('  Processing source \'\''.format (source.name))
 
             for id in source.ids:
                 entries = database.get_entries (source.type_id, id)
@@ -75,9 +83,12 @@ class Acquirer:
             while source_end > source_start and source_end in timestamps:
                 source_end.advance (step=-Configuration.DATABASE_SAMPLING_STEP)
 
+            add_to_log ('    Scraping in time interval \'{start}\' to \'{end}\''
+                        .format (start=source_start, end=source_end))
+
             if source_start != source_end or source_start not in timestamps:
                 source.run (database, source_start, source_end, Configuration.DATABASE_SAMPLING_INTERVAL,
-                            lambda text: print ('{0}: {1}'.format (source.name, text)))
+                            lambda text: add_to_log ('    {0}: {1}'.format (source.name, text)))
 
 
 #----------------------------------------------------------------------------
@@ -103,4 +114,4 @@ if __name__ == '__main__':
     acquirer.add_source (scraper.cryptocompare.CryptoCompareScraper ())
     #acquirer.add_source (scraper.twitter.TwitterScraper ())
 
-    acquirer.run (database)
+    acquirer.run (database, log=lambda text: print (text))

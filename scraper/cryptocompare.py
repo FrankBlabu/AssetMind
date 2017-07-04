@@ -11,6 +11,7 @@ import pandas as pd
 import api.cryptocompare
 
 from core.common import Interval
+from core.config import Configuration
 from core.time import Timestamp
 from database.database import Database
 from database.database import CoinEntry
@@ -36,8 +37,6 @@ class CryptoCompareScraper (Scraper):
     # @param log      Callback for logging outputs
     #
     def run (self, database, start, end, interval, log):
-
-        print ('Run, from={start}, to={end}, interval={interval}'.format (start=start, end=end, interval=interval.name))
 
         assert isinstance (start, Timestamp)
         assert isinstance (end, Timestamp)
@@ -83,6 +82,8 @@ class CryptoCompareScraper (Scraper):
 
             except api.cryptocompare.HTTPError as e:
                 add_to_log ('ERROR: {error}'.format (error=e.message))
+
+        database.commit ()
 
     #
     # Scrape available information out of the GDAX API

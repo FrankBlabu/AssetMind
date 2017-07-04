@@ -89,8 +89,6 @@ class CryptoCompare:
         command += '&toTs={timestamp}'.format (timestamp=to.epoch ())
         command = command.format (interval=interval.name, id=id, markets=self.id_as_list (CryptoCompare.markets))
 
-        print (command)
-
         r = self.query (command)
         return r['Data']
 
