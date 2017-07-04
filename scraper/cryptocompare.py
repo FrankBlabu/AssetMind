@@ -160,9 +160,6 @@ class CryptoCompareScraper (Scraper):
 #
 if __name__ == '__main__':
 
-    #
-    # Parse command line arguments
-    #
     parser = argparse.ArgumentParser ()
     parser.add_argument ('-b', '--begin',    required=False, type=Timestamp, help='Begin date (YYYY-MM-DD)')
     parser.add_argument ('-e', '--end',      required=False, type=Timestamp, help='End date (YYYY-MM-DD)')
