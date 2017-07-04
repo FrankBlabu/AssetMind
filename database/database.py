@@ -12,6 +12,8 @@ import pandas as pd
 import sqlite3
 
 from abc import ABC, abstractmethod
+from enum import Enum
+
 from core.encryption import Encryption
 from core.time import Timestamp
 
@@ -24,6 +26,14 @@ from core.time import Timestamp
 # multiple times without leading to duplicate database entries.
 #
 class Entry (ABC):
+
+    #
+    # Entry type
+    #
+    class Type (Enum):
+        numeric        = 1
+        text           = 2
+        administration = 3
 
     #
     # Constructor
@@ -51,6 +61,11 @@ class Entry (ABC):
         self.hash = h.hexdigest ()
 
     @staticmethod
+    @abstractmethod
+    def get_data_type ():
+        pass
+
+    @staticmethod
     def fill_data_frame (header, func, entries):
 
         frame = pd.DataFrame (columns=header, index=list (range (len (entries))))
@@ -61,7 +76,6 @@ class Entry (ABC):
             count += 1
 
         return frame
-
 
     @staticmethod
     @abstractmethod
@@ -108,6 +122,10 @@ class CoinEntry (Entry):
 
         self.course    = course
         self.currency  = currency
+
+    @staticmethod
+    def get_data_type ():
+        return Entry.Type.numeric
 
     #
     # Add matching table to database
@@ -203,6 +221,10 @@ class CurrencyEntry (Entry):
 
         self.course    = course
 
+    @staticmethod
+    def get_data_type ():
+        return Entry.Type.numeric
+
     #
     # Add matching table to database
     #
@@ -284,7 +306,11 @@ class StockEntry (Entry):
 
         assert isinstance (course, float)
 
-        self.course    = course
+        self.course = course
+
+    @staticmethod
+    def get_data_type ():
+        return Entry.Type.numeric
 
     #
     # Add matching table to database
@@ -372,8 +398,16 @@ class NewsEntry (Entry):
         assert isinstance (likes, int) or likes is None
 
         self.text = text
+
+        # DEPRECATED
         self.shares = shares if shares is None or shares >= 0 else None
+
+        # DEPRECATED
         self.likes = likes if likes is None or likes >= 0 else None
+
+    @staticmethod
+    def get_data_type ():
+        return Entry.Type.text
 
     #
     # Add matching table to database
@@ -471,6 +505,10 @@ class EncryptedEntry (Entry):
         assert isinstance (text, str)
 
         self.text = text
+
+    @staticmethod
+    def get_data_type ():
+        return Entry.Type.administration
 
     #
     # Add matching table to database

@@ -21,7 +21,7 @@ from core.config import Configuration
 from core.common import Interval
 from core.time import Timestamp
 from database.database import Database
-
+from database.database import Entry
 
 
 #----------------------------------------------------------------------------
@@ -85,10 +85,14 @@ if __name__ == '__main__':
 
     for t in Database.types:
 
-        entries = database.get_entries (t.ID)
-        entry_ids = set (map (lambda entry: entry.id, entries))
+        #
+        # Only entries which do not represent pure administrative records are displayed
+        #
+        if t.get_data_type () is not Entry.Type.administration:
+            entries = database.get_entries (t.ID)
+            entry_ids = set (map (lambda entry: entry.id, entries))
 
-        ids.extend (list (zip (len (entry_ids) * [t.ID], list (entry_ids))))
+            ids.extend (list (zip (len (entry_ids) * [t.ID], list (entry_ids))))
 
     ids = sorted (ids)
 
