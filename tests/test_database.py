@@ -58,16 +58,12 @@ class TestDatabase (unittest.TestCase):
 
         entries = database.get_admin_data ()
 
-        print (entries)
-
         self.assertEqual (len (entries), 3)
         self.assertEqual (entries[0].id, 'ETH')
         self.assertEqual (entries[2].id, 'Twitter_ETH')
 
         entries = database.get ('ETH')
         self.assertEqual (len (entries), 3)
-
-        print (entries)
 
         entries = database.get ('BTC')
         self.assertEqual (len (entries), 4)
@@ -76,7 +72,9 @@ class TestDatabase (unittest.TestCase):
     #
     # Test if new entries with the same hash are overwritung existing database entries
     #
-    def xxx_test_database_overwrite (self):
+    def test_database_overwrite (self):
+
+        Configuration.DATABASE_SAMPLING_INTERVAL = Interval.hour
 
         #
         # Create database
@@ -84,32 +82,33 @@ class TestDatabase (unittest.TestCase):
         database = Database (':memory:')
         database.create ()
 
+        database.register ('ETH', 'Ethereum coin (CryptoCompare)', float)
+
         #
         # Setup some coin entries
         #
-        coin_entries = []
-        coin_entries.append (CoinEntry (Timestamp ('2017-06-18 12:00'), 'eth', 'coinbase', 230.0, 'eur'))
-        coin_entries.append (CoinEntry (Timestamp ('2017-06-18 12:00'), 'btc', 'anycoind', 2200.12, 'eur'))
-        coin_entries.append (CoinEntry (Timestamp ('2017-06-18 13:00'), 'eth', 'coinbase', 240.0, 'usd'))
+        entries = []
+        entries.append (Entry (timestamp=Timestamp ('2017-06-18 12:00'), value=230.0))
+        entries.append (Entry (timestamp=Timestamp ('2017-06-18 15:00'), value=2200.12))
+        entries.append (Entry (timestamp=Timestamp ('2017-06-18 21:00'), value=240.0))
 
-        coin_entries.append (CoinEntry (Timestamp ('2017-06-18 13:00'), 'eth', 'coinbase', 242.0, 'usd'))
+        entries.append (Entry (timestamp=Timestamp ('2017-06-18 15:00'), value=242.0))
 
-        for entry in coin_entries:
-            database.add (entry)
+        database.add ('ETH', entries)
 
-        database.commit ()
+        entries = database.get ('ETH')
+        self.assertEqual (len (entries), 3)
 
-        database_coin_entries = database.get_entries (CoinEntry.ID)
-        self.assertEqual (len (database_coin_entries), 3)
-
-        for entry in database_coin_entries:
-            if entry.timestamp == Timestamp ('2017-06-18 13:00'):
-                self.assertEqual (entry.course, 242.0)
+        for entry in entries:
+            if entry.timestamp == Timestamp ('2017-06-18 15:00'):
+                self.assertEqual (entry.value, 242.0)
 
     #
     # Test handling of encrypted database entries
     #
-    def xxx_test_database_encryption (self):
+    def test_database_encryption (self):
+
+        Configuration.DATABASE_SAMPLING_INTERVAL = Interval.hour
 
         #
         # Create database
@@ -117,8 +116,10 @@ class TestDatabase (unittest.TestCase):
         database = Database (':memory:', 'secret')
         database.create ()
 
+        database.register ('Twitter XRP', 'Twitter stream (XRP)', str, encrypted=True)
+
         #
-        # Setup some coin entries
+        # Automatic password generation
         #
         encryption = Encryption ()
         password1 = encryption.generate_password ()
@@ -129,24 +130,15 @@ class TestDatabase (unittest.TestCase):
         entries = []
 
         text1 = "{'text': 'abc', 'id': 23}"
-        entries.append (EncryptedEntry (1234, 'twitter', text1))
+        entries.append (Entry (timestamp=Timestamp ('2017-08-12 11:00'), value=text1))
 
         text2 = "{'login': 'xyz123', 'auth': 42}"
-        entries.append (EncryptedEntry (5678, 'facebook', text2))
+        entries.append (Entry (timestamp=Timestamp ('2017-08-14 16:00'), value=text2))
 
-        for entry in entries:
-            database.add (entry)
+        database.add ('Twitter XRP', entries)
 
-        database.commit ()
+        entries = database.get ('Twitter XRP')
 
-        entries = database.get_entries (EncryptedEntry.ID, id='twitter')
-
-        self.assertEqual (len (entries), 1)
-        self.assertEqual (entries[0].text, text1)
-        self.assertNotEqual (entries[0].text, text2)
-
-        entries = database.get_entries (EncryptedEntry.ID, id='facebook')
-
-        self.assertEqual (len (entries), 1)
-        self.assertEqual (entries[0].text, text2)
-        self.assertNotEqual (entries[0].text, text1)
+        self.assertEqual (len (entries), 2)
+        self.assertEqual (entries[0].value, text1)
+        self.assertEqual (entries[1].value, text2)

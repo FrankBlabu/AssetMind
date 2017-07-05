@@ -90,7 +90,7 @@ class Database:
     #
     # Register new entry type
     #
-    def register (self, id, description, type_id, encrypt=False):
+    def register (self, id, description, type_id, encrypted=False):
 
         assert len (id) <= 64
         assert type_id is str or type_id is float
@@ -107,7 +107,7 @@ class Database:
         params.append (id)
         params.append (description)
         params.append (type_id.__name__)
-        params.append (encrypt)
+        params.append (encrypted)
 
         self.cursor.execute (command, params)
 
@@ -146,17 +146,17 @@ class Database:
         #
         # Fetch administrative entry
         #
-        admin = self.get_admin_data (id)[0]
-        encrypted = admin['encrypted']
+        admin = self.get_admin_data (id)
 
-        assert not encrypted or isinstance (self.password, str)
-        assert not encrypted or len (self.password) >= 4
+        assert not admin.encrypted or isinstance (self.password, str)
+        assert not admin.encrypted or len (self.password) >= 4
 
         if not isinstance (entries, list):
             entries = [entries]
 
         for entry in entries:
 
+            assert isinstance (entry, Entry)
             assert isinstance (entry.timestamp, Timestamp)
             assert isinstance (entry.value, float) or isinstance (entry.value, str)
             assert isinstance (entry.value, admin.type)
@@ -175,8 +175,8 @@ class Database:
             params.append (h)
             params.append (hash (entry.timestamp))
 
-            if encrypted:
-                params.append (encryption.encrypt (entry.value, database.password))
+            if admin.encrypted:
+                params.append (self.encryption.encrypt (entry.value, self.password))
             else:
                 params.append (entry.value)
 
@@ -192,10 +192,18 @@ class Database:
 
         assert id is not Database.ADMIN_ID
 
+        admin = self.get_admin_data (id)
+
         command = 'SELECT * FROM "{table}"'.format (table=id)
         rows = self.cursor.execute (command)
 
-        return [Entry (hash=row[0], timestamp=Timestamp (row[1]), value=row[2]) for row in rows]
+        entries = [Entry (hash=row[0], timestamp=Timestamp (row[1]), value=row[2]) for row in rows]
+
+        if admin.encrypted:
+            for entry in entries:
+                entry.value = self.encryption.decrypt (entry.value, self.password)
+
+        return entries
 
     #
     # Return administrative database entry
@@ -220,7 +228,9 @@ class Database:
 
             entries.append (Entry (id=row[0], description=row[1], type=type_id, encrypted=row[3]))
 
-        return entries
+        assert id is None or len (entries) == 1
+
+        return entries if id is None else entries[0]
 
 
 
