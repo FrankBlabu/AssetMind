@@ -5,39 +5,38 @@
 # Frank Blankenburg, Jun. 2017
 #
 
-import argparse
-import pandas as pd
-
 import api.cryptocompare
 
 from core.common import Interval
 from core.config import Configuration
 from core.time import Timestamp
-from database.database import Database
-from database.database import CoinEntry
+from database.database import Entry
 from scraper.scraper import Scraper
+
 
 #--------------------------------------------------------------------------
 # Scraper adding data extracted from Cryptocompare to the database
 #
 class CryptoCompareScraper (Scraper):
 
-    selected_coins = sorted (['ETH', 'ETC', 'BTC', 'XMR', 'XRP', 'LTC', 'ZEC', 'DASH'])
+    #selected_coins = sorted (['ETH', 'ETC', 'BTC', 'XMR', 'XRP', 'LTC', 'ZEC', 'DASH'])
 
     def __init__ (self):
-        super ().__init__ ('CryptoCompare', CoinEntry.ID, CryptoCompareScraper.selected_coins)
+        super ().__init__ ('CryptoCompare')
 
     #
     # Run scraper for acquiring a set of entries
     #
     # @param database Database to be filled
+    # @param ids      List of ids to scrape
     # @param start    Start timestamp (UTC)
     # @param end      End timestamp (UTC)
     # @param interval Interval of scraping
     # @param log      Callback for logging outputs
     #
-    def run (self, database, start, end, interval, log):
+    def run (self, database, ids, start, end, interval, log):
 
+        assert isinstance (ids, list)
         assert isinstance (start, Timestamp)
         assert isinstance (end, Timestamp)
         assert isinstance (interval, Interval)
@@ -51,7 +50,9 @@ class CryptoCompareScraper (Scraper):
         #
         # Iterate over each coin and try to gather the required information
         #
-        for coin in CryptoCompareScraper.selected_coins:
+        for coin in ids:
+
+            coin = coin.split ('::')[-1]
 
             add_to_log ('Scraping information for {coin}'.format (coin=coin))
 
@@ -70,113 +71,20 @@ class CryptoCompareScraper (Scraper):
                     prices = client.get_historical_prices (id=coin, to=to, interval=interval)
                     ok = False
 
+                    entries = []
+
                     for price in prices:
                         price_time = Timestamp (price['time'])
-                        database.add (CoinEntry (price_time, coin, 'ccmp', (price['high'] + price['low']) / 2, 'usd'))
+                        entries.append (Entry (timestamp=Timestamp (price_time), value=(price['high'] + price['low']) / 2))
 
                         if price_time < to:
                             to = price_time
                             ok = True
 
+                    database.add (coin, entries)
                     to.advance (step=-Configuration.DATABASE_SAMPLING_STEP)
 
             except api.cryptocompare.HTTPError as e:
                 add_to_log ('ERROR: {error}'.format (error=e.message))
 
         database.commit ()
-
-    #
-    # Scrape available information out of the GDAX API
-    #
-    def scrape (self, database, args):
-
-        client = api.cryptocompare.CryptoCompare ()
-
-        for coin in CryptoCompareScraper.selected_coins:
-
-            print (coin)
-
-            prices = client.get_historical_prices (id=coin, interval=Configuration.DATABASE_SAMPLING_INTERVAL)
-
-            for price in prices:
-                database.add (CoinEntry (price['time'], coin, 'ccmp', (price['high'] + price['low']) / 2, 'usd'))
-
-        database.commit ()
-
-    #
-    # Print summary of the data retrievable via the API connection
-    #
-    def summary (self, args):
-
-        client = api.cryptocompare.CryptoCompare ()
-        coins = client.get_coin_list ()
-
-        title = 'Coins'
-        print (title)
-        print (len (title) * '-')
-
-        frame = pd.DataFrame (columns=['Id', 'Name', 'Algorithm', 'Proof Type', 'Total supply', 'Pre mined'])
-
-        for key in sorted (coins.keys ()):
-            entry = coins[key]
-            frame.loc[len (frame)] = [key.strip (),
-                                      entry['CoinName'].strip (),
-                                      entry['Algorithm'].strip (),
-                                      entry['ProofType'].strip (),
-                                      entry['TotalCoinSupply'].strip (),
-                                      'Yes' if entry['FullyPremined'] != '0' else 'No']
-
-        print (frame.to_string ())
-        print ('\n')
-
-        title = 'Selected coins'
-        print (title)
-        print (len (title) * '-')
-
-        prices = client.get_price (CryptoCompareScraper.selected_coins)
-
-        frame = pd.DataFrame (columns=['Id', 'EUR', 'USD', 'BTC', 'Average (USD)', 'Gradient (%)', 'Volumen'])
-
-        for coin in CryptoCompareScraper.selected_coins:
-
-            price = prices[coin]
-            average = client.get_average_price (coin)
-            trade = client.get_trading_info (coin)
-
-            frame.loc[len (frame)] = [coin,
-                                      price['EUR'],
-                                      price['USD'],
-                                      price['BTC'],
-                                      average,
-                                      trade['CHANGEPCT24HOUR'],
-                                      trade['VOLUME24HOURTO']]
-
-        print (frame.to_string ())
-
-
-
-#--------------------------------------------------------------------------
-# MAIN
-#
-if __name__ == '__main__':
-
-    parser = argparse.ArgumentParser ()
-    parser.add_argument ('-b', '--begin',    required=False, type=Timestamp, help='Begin date (YYYY-MM-DD)')
-    parser.add_argument ('-e', '--end',      required=False, type=Timestamp, help='End date (YYYY-MM-DD)')
-    parser.add_argument ('-v', '--verbose',  action='store_true', default=False, help='Verbose output')
-    parser.add_argument ('-s', '--summary',  action='store_true', default=False, help='Print summary of available information')
-    parser.add_argument ('database', type=str, default=':memory:', help='Database file')
-
-    args = parser.parse_args ()
-
-    database = Database (args.database)
-
-    if args.database == ':memory:':
-        database.create ()
-
-    scraper = CryptoCompareScraper ()
-
-    if args.summary:
-        scraper.summary (args)
-    else:
-        scraper.scrape (database, args)

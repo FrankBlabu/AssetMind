@@ -11,12 +11,11 @@ import os.path
 import pandas as pd
 import sqlite3
 
-from enum import Enum
+import scraper.cryptocompare
 
 from core.encryption import Encryption
 from core.time import Timestamp
 from scraper.scraper import Scraper
-from scraper.cryptocompare import CryptoCompareScraper
 
 #--------------------------------------------------------------------------
 # Generic database entry
@@ -96,6 +95,8 @@ class Database:
     # Register new entry type
     #
     def register (self, id, description, type_id, scraper=None, encrypted=False):
+
+        print (type_id, self.types)
 
         assert len (id) <= 64
         assert type_id in self.types
@@ -286,9 +287,9 @@ def database_create (args):
     database.create ()
 
     database.register (id='CryptoCompare::ETH', description='Ethereum course (CryptoCompare)', type_id=float,
-                       scraper=CryptoCompareScraper, encrypted=False)
+                       scraper=scraper.cryptocompare.CryptoCompareScraper, encrypted=False)
     database.register (id='CryptoCompare::BTC', description='Bitcoin course (CryptoCompare)', type_id=float,
-                       scraper=CryptoCompareScraper, encrypted=False)
+                       scraper=scraper.cryptocompare.CryptoCompareScraper, encrypted=False)
 
 
 #

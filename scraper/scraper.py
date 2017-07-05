@@ -6,7 +6,6 @@
 #
 
 from abc import ABC, abstractmethod
-from enum import Enum
 
 #
 # Abstract base class for all data scrapers
@@ -16,30 +15,23 @@ class Scraper (ABC):
     #
     # Constructor
     #
-    # @param name    Printable name of the scraper for logging outputs
-    # @param type_id Id of the type used to keep the scrapers entries
-    # @param ids     Entry ids handled by the scraper
+    # @param name Printable name of the scraper for logging outputs
     #
-    def __init__ (self, name, type_id, ids):
-
-        assert isinstance (type_id, str)
-        assert isinstance (ids, list)
-
+    def __init__ (self, name):
         self.name = name
-        self.type_id = type_id
-        self.ids = ids
 
     #
     # Run scraper for acquiring a set of entries
     #
     # @param database Database to be filled
+    # @param ids      List of ids to scrape
     # @param start    Start timestamp (UTC)
     # @param end      End timestamp (UTC)
     # @param interval Interval of scraping
     # @param log      Callback for logging outputs
     #
     @abstractmethod
-    def run (self, database, start, end, interval, log):
+    def run (self, database, ids, start, end, interval, log):
         pass
 
 #

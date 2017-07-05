@@ -7,12 +7,10 @@
 
 import argparse
 
-from scraper.scraper import Scraper
 import scraper.cryptocompare
 import scraper.twitter
 
 from database.database import Database
-from core.common import Interval
 from core.time import Timestamp
 from core.config import Configuration
 
