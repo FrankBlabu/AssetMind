@@ -15,6 +15,8 @@ from enum import Enum
 
 from core.encryption import Encryption
 from core.time import Timestamp
+from scraper.scraper import Scraper
+from scraper.cryptocompare import CryptoCompareScraper
 
 #--------------------------------------------------------------------------
 # Generic database entry
@@ -60,6 +62,8 @@ class Database:
     def __init__ (self, file, password=None):
 
         self.encryption = Encryption ()
+        self.scrapers = {}
+        self.types = {str.__name__: str, float.__name__: float}
 
         self.file = file
         self.password = password
@@ -78,6 +82,7 @@ class Database:
         command += 'id VARCHAR (64), '
         command += 'description MEMO, '
         command += 'type VARCHAR (64), '
+        command += 'scraper VARCHAR (128), '
         command += 'encrypted BOOLEAN'
         command += ')'
 
@@ -90,46 +95,67 @@ class Database:
     #
     # Register new entry type
     #
-    def register (self, id, description, type_id, encrypted=False):
+    def register (self, id, description, type_id, scraper=None, encrypted=False):
 
         assert len (id) <= 64
-        assert type_id is str or type_id is float
+        assert type_id in self.types
+        assert scraper is None or isinstance (scraper, Scraper)
         assert len (type_id.__name__) <= 64
 
-        #
-        # Register type in administrative database
-        #
-        command = 'INSERT INTO "{id}" '.format (id=Database.ADMIN_ID)
-        command += '(id, description, type, encrypted) '
-        command += 'values (?, ?, ?, ?)'
+        if scraper:
+            self.scrapers[scraper.__name__] = scraper
 
-        params = []
-        params.append (id)
-        params.append (description)
-        params.append (type_id.__name__)
-        params.append (encrypted)
-
-        self.cursor.execute (command, params)
+        admin = self.get_admin_data (id)
 
         #
-        # If the database is just being created, the registered types table has to to
-        # added now, too
+        # Add type into database if not done yet
         #
-        if self.created:
-            command = 'CREATE TABLE "{id}" ('.format (id=id)
-            command += 'hash VARCHAR (64), '
-            command += 'timestamp LONG NOT NULL, '
+        if admin is None:
+            #
+            # Register type in administrative database
+            #
+            command = 'INSERT INTO "{id}" '.format (id=Database.ADMIN_ID)
+            command += '(id, description, type, scraper, encrypted) '
+            command += 'values (?, ?, ?, ?)'
 
-            if type_id is str:
-                command += 'value MEMO'
-            elif type_id is float:
-                command += 'value REAL'
+            params = []
+            params.append (id)
+            params.append (description)
+            params.append (type_id.__name__)
+            params.append (scraper.__name__ if scraper else '')
+            params.append (encrypted)
 
-            command += ')'
+            self.cursor.execute (command, params)
 
-            self.cursor.execute (command)
+            #
+            # If the database is just being created, the registered types table has to to
+            # added now, too
+            #
+            if self.created:
+                command = 'CREATE TABLE "{id}" ('.format (id=id)
+                command += 'hash VARCHAR (64), '
+                command += 'timestamp LONG NOT NULL, '
 
-        self.connection.commit ()
+                if type_id is str:
+                    command += 'value MEMO'
+                elif type_id is float:
+                    command += 'value REAL'
+
+                command += ')'
+
+                self.cursor.execute (command)
+
+            self.connection.commit ()
+
+        #
+        # For already registered types check if the fields are matching
+        #
+        else:
+            assert admin.id == id
+            assert admin.description == description
+            assert admin.type == type_id
+            assert admin.scraper == scraper
+            assert admin.encrypted == encrypted
 
     #
     # Add entry to the database
@@ -220,23 +246,34 @@ class Database:
         entries = []
 
         for row in rows:
+            assert row[2] in self.types
 
-            if row[2] == str.__name__:
-                type_id = str
-            elif row[2] == float.__name__:
-                type_id = float
+            scraper = None
+            if row[3] and row[3] in self.scrapers:
+                scraper = self.scrapers[row[3]]
 
-            entries.append (Entry (id=row[0], description=row[1], type=type_id, encrypted=row[3]))
+            entries.append (Entry (id=row[0], description=row[1], type=self.types[row[2]], scraper=scraper, encrypted=row[4]))
 
-        assert id is None or len (entries) == 1
+        if not entries:
+            return None
+        elif not id:
+            return entries
 
-        return entries if id is None else entries[0]
-
+        return entries[0]
 
 
 #--------------------------------------------------------------------------
 # Database functions
 #
+
+def print_frame (title, frame):
+
+    pd.set_option ('display.width', 256)
+    pd.set_option ('display.max_rows', len (frame))
+
+    print (title)
+    print ('-' * len (title))
+    print (frame)
 
 #
 # Create new database
@@ -248,21 +285,18 @@ def database_create (args):
     database = Database (args.database, args.password)
     database.create ()
 
+    database.register (id='CryptoCompare::ETH', description='Ethereum course (CryptoCompare)', type_id=float,
+                       scraper=CryptoCompareScraper, encrypted=False)
+    database.register (id='CryptoCompare::BTC', description='Bitcoin course (CryptoCompare)', type_id=float,
+                       scraper=CryptoCompareScraper, encrypted=False)
+
+
 #
 # List content of a database table
 #
 def database_list_table (args):
 
     database = Database (args.database, args.password)
-
-    def print_frame (title, frame):
-
-        pd.set_option ('display.width', 256)
-        pd.set_option ('display.max_rows', len (frame))
-
-        print (title)
-        print ('-' * len (title))
-        print (frame)
 
     for t in Database.types:
         if args.list == t.ID or args.list == 'all':
@@ -275,20 +309,15 @@ def database_summary (args):
 
     database = Database (args.database, args.password)
 
-    frame = pd.DataFrame (columns=['type', 'id', 'entries', 'start date', 'end date'])
+    entries = database.get_admin_data ()
 
-    for t in Database.types:
-        entries = database.get_entries (t.ID)
-        ids = set (map (lambda entry: entry.id, entries))
+    frame = pd.DataFrame (columns=['id', 'description', 'type', 'encrypted', 'entries'])
 
-        for id in ids:
-            id_entries = [e for e in entries if e.id == id]
-            times = [t.timestamp for t in id_entries]
+    for entry in entries:
+        data = database.get (entry.id)
+        frame.loc[len (frame)] = [entry.id, entry.description, entry.type.__name__, (entry.encrypted == 1), len (data)]
 
-            frame.loc[len (frame)] = [t.__name__, id, len (id_entries),
-                                      min (times), max (times)]
-
-    print (frame)
+    print_frame ('Administrative data', frame)
 
 
 #--------------------------------------------------------------------------
@@ -313,9 +342,6 @@ if __name__ == '__main__':
 
     if args.create:
         database_create (args)
-
-    elif args.list is not None:
-        database_list_table (args)
 
     elif args.summary:
         database_summary (args)
