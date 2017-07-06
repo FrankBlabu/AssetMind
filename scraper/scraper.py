@@ -72,6 +72,9 @@ class ScraperRegistry:
     def get (id):
         return ScraperRegistry.scrapers[id] if id in ScraperRegistry.scrapers else None
 
+    @staticmethod
+    def get_all ():
+        return ScraperRegistry.scrapers.values ()
 
 #
 # Exception thrown by the scraper implementation if anything went wrong

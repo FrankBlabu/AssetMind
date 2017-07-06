@@ -72,9 +72,8 @@ class Database:
         command += ')'
 
         self.cursor.execute (command)
-        self.connection.commit ()
 
-        for scraper in ScraperRegistry.scrapers.values ():
+        for scraper in ScraperRegistry.get_all ():
 
             for channel in scraper.get_channels ():
 
@@ -156,8 +155,11 @@ class Database:
             # will show us if there already is an entry covering this time slot which must be
             # deleted first.
             #
-            h = hash (entry.timestamp)
-            h = hashlib.md5 (h.to_bytes (8, 'big')).hexdigest ()
+            if not hash in entry:
+                h = hash (entry.timestamp)
+                h = hashlib.md5 (h.to_bytes (8, 'big')).hexdigest ()
+            else:
+                h = entry.hash
 
             command = 'DELETE FROM "{table}" WHERE hash="{hash}"'.format (table=id, hash=h)
             self.cursor.execute (command)
@@ -168,7 +170,7 @@ class Database:
 
             params = []
             params.append (h)
-            params.append (hash (entry.timestamp))
+            params.append (entry.timestamp.epoch ())
 
             if admin.encrypted:
                 params.append (self.encryption.encrypt (entry.value, self.password))

@@ -20,9 +20,8 @@ import twitter
 import time
 
 from database.database import Database
-from database.database import EncryptedEntry
-from database.database import NewsEntry
 from scraper.scraper import Scraper
+from scraper.scraper import Channel
 
 
 #----------------------------------------------------------------------------
@@ -30,12 +29,16 @@ from scraper.scraper import Scraper
 #
 class TwitterScraper (Scraper):
 
+    ID = 'twitter'
     APP_NAME = 'AssetMind'
-    DATABASE_ID = 'twitter'
+
+    OAUTH_CHANNEL_ID = 'OAuth'
+    CHANNELS = { 'ETH': ['ethereum'],
+                 'BTC': ['bitcoin'] }
 
     def __init__ (self):
 
-        super ().__init__ ('Twitter', NewsEntry.ID, [TwitterScraper.DATABASE_ID])
+        super ().__init__ (TwitterScraper.ID)
 
         emoticons_str = r"""
             (?:
@@ -61,6 +64,26 @@ class TwitterScraper (Scraper):
 
 
     #
+    # Get all channels provided by the scraper
+    #
+    # @return List of channels
+    #
+    def get_channels (self):
+
+        channels = []
+
+        for channel in TwitterScraper.CHANNELS.keys ():
+            channels.append (Channel (id=TwitterScraper.ID + '::' + channel,
+                                      description='Twitter stream ({0})'.format (channel),
+                                      type=str,
+                                      encrypted=False))
+
+        channels.append (Channel (id=TwitterScraper.ID + '::' + TwitterScraper.OAUTH_CHANNEL_ID,
+                                  description='Twitter OAuth credentials', type=str, encrypted=True))
+
+        return channels
+
+    #
     # Perform authentification to get the necessary OAuth credentials
     #
     # This function must be performed once to write the neccesary parameters
@@ -83,8 +106,56 @@ class TwitterScraper (Scraper):
         data['access_key'] = access_key
         data['access_secret'] = access_secret
 
-        database.add (EncryptedEntry (int (round (time.time ())), TwitterScraper.DATABASE_ID, json.dumps (data)))
-        database.commit ()
+        database.add (TwitterScraper.ID + '::' + TwitterScraper.OAUTH_CHANNEL_ID,
+                      Entry (hash='0000', timestamp=Timestamp (), value=json.dumps (data)))
+
+    #
+    # Retrieve OAuth credentials from the database
+    #
+    # @param database Database containing the credentials
+    #
+    def get_credentials (self, database):
+
+        assert database is not None
+        assert database.password is not None
+
+        entries = database.get (TwitterScraper.ID + '::' + TwitterScraper.OAUTH_CHANNEL_ID)
+        assert len (entries) == 1
+
+        return json.loads (entries[0].value)
+
+    #
+    # Run scraper for acquiring a set of entries
+    #
+    # @param database Database to be filled
+    # @param ids      List of ids to scrape
+    # @param start    Start timestamp (UTC)
+    # @param end      End timestamp (UTC)
+    # @param interval Interval of scraping
+    # @param log      Callback for logging outputs
+    #
+    def run (self, database, ids, start, end, interval, log):
+        credentials = self.get_credentials (database)
+
+        server = twitter.Twitter (auth=twitter.OAuth (credentials['access_key'],
+                                                      credentials['access_secret'],
+                                                      credentials['consumer_key'],
+                                                      credentials['consumer_secret']))
+
+        for channel, tags in TwitterScraper.CHANNELS:
+
+            query = server.search.tweets (q=' '.join (tags), count=100)
+            entries = []
+
+            for q in query['statuses']:
+
+                tweet = self.to_string (q['text'])
+                tweet = self.tokenize (tweet)
+                tweet = [token if self.emoticon_regexp.search (token) else token.lower () for token in tweet]
+
+                entries.append (Entry (timestamp=Timestamp (q['created_at']).timestamp ()), value=json.dumps (tweet))
+
+            database.add (TwitterScraper.ID + '::' + channel, entries)
 
     #
     # Print feed summany
@@ -100,51 +171,6 @@ class TwitterScraper (Scraper):
         query = server.search.tweets (q='ethereum blockchain bitcoin', count=100)
         print (query['search_metadata'])
 
-    #
-    # Retrieve OAuth credentials from the database
-    #
-    # @param database Database containing the credentials
-    #
-    def get_credentials (self, database):
-
-        assert database is not None
-        assert database.password is not None
-
-        entry = database.get_entries (EncryptedEntry.ID, TwitterScraper.DATABASE_ID)
-        assert len (entry) == 1
-
-        return json.loads (entry[0].text)
-
-    #
-    # Run scraper for acquiring a set of entries
-    #
-    # @param database Database to be filled
-    # @param start    Start timestamp (UTC)
-    # @param end      End timestamp (UTC)
-    # @param interval Interval of scraping
-    # @param log      Callback for logging outputs
-    #
-    def run (self, database, start, end, interval, log):
-        credentials = self.get_credentials (database)
-
-        server = twitter.Twitter (auth=twitter.OAuth (credentials['access_key'],
-                                                      credentials['access_secret'],
-                                                      credentials['consumer_key'],
-                                                      credentials['consumer_secret']))
-
-        query = server.search.tweets (q='ethereum blockchain bitcoin', count=100)
-
-        for q in query['statuses']:
-
-            tweet = self.to_string (q['text'])
-            tweet = self.tokenize (tweet)
-            tweet = [token if self.emoticon_regexp.search (token) else token.lower () for token in tweet]
-
-            database.add (NewsEntry (int (dateutil.parser.parse (q['created_at']).timestamp ()),
-                                     TwitterScraper.DATABASE_ID, json.dumps (tweet),
-                                     q['retweet_count'], q['favorite_count']))
-
-        database.commit ()
 
     #
     # Tokenize a tweet content
