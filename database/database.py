@@ -11,7 +11,7 @@ import os.path
 import pandas as pd
 import sqlite3
 
-import scraper.cryptocompare
+from enum import Enum
 
 from core.encryption import Encryption
 from core.time import Timestamp
@@ -61,7 +61,6 @@ class Database:
     def __init__ (self, file, password=None):
 
         self.encryption = Encryption ()
-        self.scrapers = {}
         self.types = {str.__name__: str, float.__name__: float}
 
         self.file = file
@@ -81,7 +80,6 @@ class Database:
         command += 'id VARCHAR (64), '
         command += 'description MEMO, '
         command += 'type VARCHAR (64), '
-        command += 'scraper VARCHAR (128), '
         command += 'encrypted BOOLEAN'
         command += ')'
 
@@ -94,17 +92,11 @@ class Database:
     #
     # Register new entry type
     #
-    def register (self, id, description, type_id, scraper=None, encrypted=False):
-
-        print (type_id, self.types)
+    def register (self, id, description, type_id, encrypted=False):
 
         assert len (id) <= 64
-        assert type_id in self.types
-        assert scraper is None or isinstance (scraper, Scraper)
+        assert type_id.__name__ in self.types
         assert len (type_id.__name__) <= 64
-
-        if scraper:
-            self.scrapers[scraper.__name__] = scraper
 
         admin = self.get_admin_data (id)
 
@@ -116,14 +108,13 @@ class Database:
             # Register type in administrative database
             #
             command = 'INSERT INTO "{id}" '.format (id=Database.ADMIN_ID)
-            command += '(id, description, type, scraper, encrypted) '
+            command += '(id, description, type, encrypted) '
             command += 'values (?, ?, ?, ?)'
 
             params = []
             params.append (id)
             params.append (description)
             params.append (type_id.__name__)
-            params.append (scraper.__name__ if scraper else '')
             params.append (encrypted)
 
             self.cursor.execute (command, params)
@@ -155,7 +146,6 @@ class Database:
             assert admin.id == id
             assert admin.description == description
             assert admin.type == type_id
-            assert admin.scraper == scraper
             assert admin.encrypted == encrypted
 
     #
@@ -248,12 +238,7 @@ class Database:
 
         for row in rows:
             assert row[2] in self.types
-
-            scraper = None
-            if row[3] and row[3] in self.scrapers:
-                scraper = self.scrapers[row[3]]
-
-            entries.append (Entry (id=row[0], description=row[1], type=self.types[row[2]], scraper=scraper, encrypted=row[4]))
+            entries.append (Entry (id=row[0], description=row[1], type=self.types[row[2]], encrypted=row[3]))
 
         if not entries:
             return None
@@ -286,22 +271,35 @@ def database_create (args):
     database = Database (args.database, args.password)
     database.create ()
 
-    database.register (id='CryptoCompare::ETH', description='Ethereum course (CryptoCompare)', type_id=float,
-                       scraper=scraper.cryptocompare.CryptoCompareScraper, encrypted=False)
-    database.register (id='CryptoCompare::BTC', description='Bitcoin course (CryptoCompare)', type_id=float,
-                       scraper=scraper.cryptocompare.CryptoCompareScraper, encrypted=False)
-
+    database.register (id='CryptoCompare::ETH', description='Ethereum course (CryptoCompare)', type_id=float)
+    database.register (id='CryptoCompare::ETC', description='Ethereum classic course (CryptoCompare)', type_id=float)
+    database.register (id='CryptoCompare::BTC', description='Bitcoin course (CryptoCompare)', type_id=float)
+    database.register (id='CryptoCompare::XMR', description='Monero course (CryptoCompare)', type_id=float)
+    database.register (id='CryptoCompare::XRP', description='Ripple course (CryptoCompare)', type_id=float)
+    database.register (id='CryptoCompare::LTC', description='Litecoin course (CryptoCompare)', type_id=float)
+    database.register (id='CryptoCompare::ZEC', description='ZCash course (CryptoCompare)', type_id=float)
+    database.register (id='CryptoCompare::DASH', description='Dash course (CryptoCompare)', type_id=float)
 
 #
-# List content of a database table
+# List content of database tables
 #
-def database_list_table (args):
+def database_list (args):
 
     database = Database (args.database, args.password)
+    admin = database.get_admin_data ()
 
-    for t in Database.types:
-        if args.list == t.ID or args.list == 'all':
-            print_frame (t.ID, t.create_data_frame (database.get_entries (t.ID)))
+    ids = [id.strip () for id in args.list.split (',')]
+
+    for admin_entry in admin:
+        if admin_entry.id in ids or 'all' in ids:
+
+            frame = pd.DataFrame (columns=['timestamp', 'hash', 'value'])
+
+            for entry in database.get (admin_entry.id):
+                frame.loc[len (frame)] = [entry.timestamp, entry.hash, entry.value]
+
+            print_frame ('{0} [{1}]'.format (admin_entry.id, admin_entry.description), frame)
+
 
 #
 # Print database summary
@@ -309,12 +307,9 @@ def database_list_table (args):
 def database_summary (args):
 
     database = Database (args.database, args.password)
-
-    entries = database.get_admin_data ()
-
     frame = pd.DataFrame (columns=['id', 'description', 'type', 'encrypted', 'entries'])
 
-    for entry in entries:
+    for entry in database.get_admin_data ():
         data = database.get (entry.id)
         frame.loc[len (frame)] = [entry.id, entry.description, entry.type.__name__, (entry.encrypted == 1), len (data)]
 
@@ -332,7 +327,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser ()
 
     parser.add_argument ('-c', '--create',   action='store_true', default=False, help='Create new database')
-    #parser.add_argument ('-l', '--list',     action='store', choices=[t.ID for t in Database.types] + ['all'], help='List database content')
+    parser.add_argument ('-l', '--list',     action='store', default=False, help='List database content')
     parser.add_argument ('-s', '--summary',  action='store_true', default=False, help='Print database summary')
     parser.add_argument ('-p', '--password', type=str, default=None, help='Passwort for database encryption')
     parser.add_argument ('database',         type=str, default=None, help='Database file')
@@ -346,3 +341,6 @@ if __name__ == '__main__':
 
     elif args.summary:
         database_summary (args)
+
+    elif args.list:
+        database_list (args)
