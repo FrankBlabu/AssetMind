@@ -45,9 +45,10 @@ class CryptoCompare:
     # limit    - Maximum number of entries requested with a single web API call
     #
     #markets = ['Poloniex', 'Kraken', 'Coinbase', 'HitBTC']
-    markets  = ['Poloniex']
-    currency = 'USD'
-    limit    = 2000
+    markets    = ['Poloniex']
+    currencies = 'USD,EUR,BTC'
+    currency   = 'USD'
+    limit      = 2000
 
     def __init__ (self):
         pass
@@ -58,22 +59,22 @@ class CryptoCompare:
 
     def get_coin_snapshot (self, id):
         command = 'https://www.cryptocompare.com/api/data/coinsnapshot?fsym={id}&tsym={currency}' \
-        .format (id=self.id_as_list (id), currency=currency)
+        .format (id=self.id_as_list (id), currency=CryptoCompare.currency)
         return self.query (command)
 
     def get_price (self, id):
         command = 'https://min-api.cryptocompare.com/data/pricemulti?fsyms={id}&tsyms={currency}' \
-        .format (id=self.id_as_list (id), currency=currency)
+        .format (id=self.id_as_list (id), currency=CryptoCompare.currencies)
         return self.query (command)
 
     def get_average_price (self, id):
         command = 'https://min-api.cryptocompare.com/data/dayAvg?fsym={id}&tsym={currency}&UTCHourDiff=-8' \
-        .format (id=self.id_as_list (id), currency=currency)
+        .format (id=self.id_as_list (id), currency=CryptoCompare.currency)
         return self.query (command)['USD']
 
     def get_trading_info (self, id):
         command = 'https://min-api.cryptocompare.com/data/generateAvg?fsym={id}&tsym={currency}&markets={markets}' \
-            .format (id=id, currency=currency, markets=self.id_as_list (CryptoCompare.markets))
+            .format (id=id, currency=CryptoCompare.currency, markets=self.id_as_list (CryptoCompare.markets))
         return self.query (command)['RAW']
 
     def get_historical_prices (self, id, to, interval):

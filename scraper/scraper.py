@@ -17,8 +17,8 @@ class Scraper (ABC):
     #
     # @param name Printable name of the scraper for logging outputs
     #
-    def __init__ (self, name):
-        self.name = name
+    def __init__ (self, id):
+        self.id = id
 
     #
     # Run scraper for acquiring a set of entries
@@ -33,6 +33,24 @@ class Scraper (ABC):
     @abstractmethod
     def run (self, database, ids, start, end, interval, log):
         pass
+
+#
+# Registry for all scraper instances to be used
+#
+class ScraperRegistry:
+
+    #
+    # Registered scrapers
+    #
+    scrapers = {}
+
+    @staticmethod
+    def register (scraper, id):
+        ScraperRegistry.scrapers[id] = scraper
+
+    @staticmethod
+    def get (id):
+        return ScraperRegistry.scrapers[id] if id in ScraperRegistry.scrapers else None
 
 #
 # Exception thrown by the scraper implementation if anything went wrong

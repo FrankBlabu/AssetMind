@@ -92,6 +92,15 @@ class Database:
     #
     # Register new entry type
     #
+    # This function will register the information associated with a given id
+    # in the administrative database table and create a table entry for this
+    # ids data if not present in the database yet.
+    #
+    # @param id Id of the entry in the format 'scraper::token'
+    # @param description Human readable description of the entry
+    # @param type_id     Type of the entry (float or str)
+    # @param encrypted   If 'True', the entry will be stored encrypted in the database
+    #
     def register (self, id, description, type_id, encrypted=False):
 
         assert len (id) <= 64
@@ -101,7 +110,7 @@ class Database:
         admin = self.get_admin_data (id)
 
         #
-        # Add type into database if not done yet
+        # Add administrative entry if not present yet
         #
         if admin is None:
             #
@@ -119,26 +128,6 @@ class Database:
 
             self.cursor.execute (command, params)
 
-            #
-            # If the database is just being created, the registered types table has to to
-            # added now, too
-            #
-            if self.created:
-                command = 'CREATE TABLE "{id}" ('.format (id=id)
-                command += 'hash VARCHAR (64), '
-                command += 'timestamp LONG NOT NULL, '
-
-                if type_id is str:
-                    command += 'value MEMO'
-                elif type_id is float:
-                    command += 'value REAL'
-
-                command += ')'
-
-                self.cursor.execute (command)
-
-            self.connection.commit ()
-
         #
         # For already registered types check if the fields are matching
         #
@@ -147,6 +136,27 @@ class Database:
             assert admin.description == description
             assert admin.type == type_id
             assert admin.encrypted == encrypted
+
+        #
+        # If the database is just being created, the registered types table has to to
+        # added now, too
+        #
+        if self.created:
+            command = 'CREATE TABLE "{id}" ('.format (id=id)
+            command += 'hash VARCHAR (64), '
+            command += 'timestamp LONG NOT NULL, '
+
+            if type_id is str:
+                command += 'value MEMO'
+            elif type_id is float:
+                command += 'value REAL'
+
+            command += ')'
+
+            self.cursor.execute (command)
+
+        self.connection.commit ()
+
 
     #
     # Add entry to the database
@@ -171,6 +181,9 @@ class Database:
         if not isinstance (entries, list):
             entries = [entries]
 
+        #
+        # Insert new entries into database
+        #
         for entry in entries:
 
             assert isinstance (entry, Entry)
@@ -178,6 +191,11 @@ class Database:
             assert isinstance (entry.value, float) or isinstance (entry.value, str)
             assert isinstance (entry.value, admin.type)
 
+            #
+            # The timestamp has a fixed granularity, usually 'day' or 'hour'. So the timestamp hash
+            # will show us if there already is an entry covering this time slot which must be
+            # deleted first.
+            #
             h = hash (entry.timestamp)
             h = hashlib.md5 (h.to_bytes (8, 'big')).hexdigest ()
 
@@ -299,6 +317,7 @@ def database_list (args):
                 frame.loc[len (frame)] = [entry.timestamp, entry.hash, entry.value]
 
             print_frame ('{0} [{1}]'.format (admin_entry.id, admin_entry.description), frame)
+            print ('')
 
 
 #

@@ -21,21 +21,22 @@ from scraper.scraper import Scraper
 #
 class CryptoCompareScraper (Scraper):
 
-    selected_coins = sorted (['ETH', 'ETC', 'BTC', 'XMR', 'XRP', 'LTC', 'ZEC', 'DASH'])
+    ID = 'CryptoCompare'
 
     def __init__ (self):
-        super ().__init__ ('CryptoCompare', CoinEntry.ID, CryptoCompareScraper.selected_coins)
+        super ().__init__ (CryptoCompareScraper.ID)
 
     #
     # Run scraper for acquiring a set of entries
     #
     # @param database Database to be filled
+    # @param ids      List of ids to scrapr
     # @param start    Start timestamp (UTC)
     # @param end      End timestamp (UTC)
     # @param interval Interval of scraping
     # @param log      Callback for logging outputs
     #
-    def run (self, database, start, end, interval, log):
+    def run (self, database, ids, start, end, interval, log):
 
         assert isinstance (start, Timestamp)
         assert isinstance (end, Timestamp)
@@ -48,11 +49,10 @@ class CryptoCompareScraper (Scraper):
         client = api.cryptocompare.CryptoCompare ()
 
         #
-        # Iterate over each coin and try to gather the required information
+        # Iterate over each token id
         #
-        for coin in CryptoCompareScraper.selected_coins:
-
-            add_to_log ('Scraping information for {coin}'.format (coin=coin))
+        for id in ids:
+            add_to_log ('Scraping information for {id}'.format (id=id))
 
             #
             # We are scraping backwards in time because th CryptoCompare API will only
@@ -64,14 +64,14 @@ class CryptoCompareScraper (Scraper):
                 ok = True
                 while ok and to >= start:
 
-                    add_to_log ('Fetching information for {coin} until {to}'.format (coin=coin, to=to))
+                    add_to_log ('Fetching information for {id} until {to}'.format (id=id, to=to))
 
-                    prices = client.get_historical_prices (id=coin, to=to, interval=interval)
+                    prices = client.get_historical_prices (id=id, to=to, interval=interval)
                     ok = False
 
                     for price in prices:
                         price_time = Timestamp (price['time'])
-                        database.add (CoinEntry (price_time, coin, 'ccmp', (price['high'] + price['low']) / 2, 'usd'))
+                        database.add ('{scraper}::{token}'.format (self.id, id), (price['high'] + price['low']) / 2)
 
                         if price_time < to:
                             to = price_time
@@ -81,24 +81,6 @@ class CryptoCompareScraper (Scraper):
 
             except api.cryptocompare.HTTPError as e:
                 add_to_log ('ERROR: {error}'.format (error=e.message))
-
-        database.commit ()
-
-    #
-    # Scrape available information out of the GDAX API
-    #
-    def scrape (self, database, args):
-
-        client = api.cryptocompare.CryptoCompare ()
-
-        for coin in CryptoCompareScraper.selected_coins:
-
-            print (coin)
-
-            prices = client.get_historical_prices (id=coin, interval=Configuration.DATABASE_SAMPLING_INTERVAL)
-
-            for price in prices:
-                database.add (CoinEntry (price['time'], coin, 'ccmp', (price['high'] + price['low']) / 2, 'usd'))
 
         database.commit ()
 
@@ -132,11 +114,13 @@ class CryptoCompareScraper (Scraper):
         print (title)
         print (len (title) * '-')
 
-        prices = client.get_price (CryptoCompareScraper.selected_coins)
+        selected_coins = sorted (['ETH', 'ETC', 'BTC', 'XRP', 'XMR', 'LTC'])
+
+        prices = client.get_price (selected_coins)
 
         frame = pd.DataFrame (columns=['Id', 'EUR', 'USD', 'BTC', 'Average (USD)', 'Gradient (%)', 'Volumen'])
 
-        for coin in CryptoCompareScraper.selected_coins:
+        for coin in selected_coins:
 
             price = prices[coin]
             average = client.get_average_price (coin)
@@ -160,22 +144,14 @@ class CryptoCompareScraper (Scraper):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser ()
-    parser.add_argument ('-b', '--begin',    required=False, type=Timestamp, help='Begin date (YYYY-MM-DD)')
-    parser.add_argument ('-e', '--end',      required=False, type=Timestamp, help='End date (YYYY-MM-DD)')
-    parser.add_argument ('-v', '--verbose',  action='store_true', default=False, help='Verbose output')
     parser.add_argument ('-s', '--summary',  action='store_true', default=False, help='Print summary of available information')
-    parser.add_argument ('database', type=str, default=':memory:', help='Database file')
 
     args = parser.parse_args ()
 
-    database = Database (args.database)
-
-    if args.database == ':memory:':
-        database.create ()
+    database = Database (':memory:')
+    database.create ()
 
     scraper = CryptoCompareScraper ()
 
     if args.summary:
         scraper.summary (args)
-    else:
-        scraper.scrape (database, args)
