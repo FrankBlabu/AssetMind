@@ -13,33 +13,21 @@ import sqlite3
 
 from enum import Enum
 
+import core
+
 from core.encryption import Encryption
 from core.time import Timestamp
 from scraper.scraper import Scraper
+from scraper.scraper import ScraperRegistry
+
 
 #--------------------------------------------------------------------------
 # Generic database entry
 #
-class Entry (dict):
-
-    def __init__ (self, *args, **kwargs):
-        super (Entry, self).__init__ (*args, **kwargs)
-
-    def __getattr__ (self, name):
-        if name not in self:
-            raise AttributeError ('No such attribute: ', name)
-        return self[name]
-
-    def __setattr__ (self, name, value):
-        self[name] = value
-
-    def __delattr__ (self, name):
-        if name in self:
-            del self[name]
+class Entry (core.common.AttrDict):
 
     def __repr__ (self):
-        return 'Entry ({0})'.format (', '.join ([key + '=' + str (self[key]) for key in self.keys ()]))
-
+        return 'Entry ' + super ().__repr__ ()
 
 
 #--------------------------------------------------------------------------
@@ -86,74 +74,46 @@ class Database:
         self.cursor.execute (command)
         self.connection.commit ()
 
-        self.created = True
+        for scraper in ScraperRegistry.scrapers.values ():
 
+            for channel in scraper.get_channels ():
 
-    #
-    # Register new entry type
-    #
-    # This function will register the information associated with a given id
-    # in the administrative database table and create a table entry for this
-    # ids data if not present in the database yet.
-    #
-    # @param id Id of the entry in the format 'scraper::token'
-    # @param description Human readable description of the entry
-    # @param type_id     Type of the entry (float or str)
-    # @param encrypted   If 'True', the entry will be stored encrypted in the database
-    #
-    def register (self, id, description, type_id, encrypted=False):
+                assert len (channel.id) <= 64
+                assert channel.type in self.types.values ()
+                assert len (channel.type.__name__) <= 64
 
-        assert len (id) <= 64
-        assert type_id.__name__ in self.types
-        assert len (type_id.__name__) <= 64
+                admin = self.get_admin_data (channel.id)
 
-        admin = self.get_admin_data (id)
+                #
+                # Register type in administrative database
+                #
+                command = 'INSERT INTO "{id}" '.format (id=Database.ADMIN_ID)
+                command += '(id, description, type, encrypted) '
+                command += 'values (?, ?, ?, ?)'
 
-        #
-        # Add administrative entry if not present yet
-        #
-        if admin is None:
-            #
-            # Register type in administrative database
-            #
-            command = 'INSERT INTO "{id}" '.format (id=Database.ADMIN_ID)
-            command += '(id, description, type, encrypted) '
-            command += 'values (?, ?, ?, ?)'
+                params = []
+                params.append (channel.id)
+                params.append (channel.description)
+                params.append (channel.type.__name__)
+                params.append (channel.encrypted)
 
-            params = []
-            params.append (id)
-            params.append (description)
-            params.append (type_id.__name__)
-            params.append (encrypted)
+                self.cursor.execute (command, params)
 
-            self.cursor.execute (command, params)
+                #
+                # Create table for the channel itself
+                #
+                command = 'CREATE TABLE "{id}" ('.format (id=channel.id)
+                command += 'hash VARCHAR (64), '
+                command += 'timestamp LONG NOT NULL, '
 
-        #
-        # For already registered types check if the fields are matching
-        #
-        else:
-            assert admin.id == id
-            assert admin.description == description
-            assert admin.type == type_id
-            assert admin.encrypted == encrypted
+                if channel.type is str:
+                    command += 'value MEMO'
+                elif channel.type is float:
+                    command += 'value REAL'
 
-        #
-        # If the database is just being created, the registered types table has to to
-        # added now, too
-        #
-        if self.created:
-            command = 'CREATE TABLE "{id}" ('.format (id=id)
-            command += 'hash VARCHAR (64), '
-            command += 'timestamp LONG NOT NULL, '
+                command += ')'
 
-            if type_id is str:
-                command += 'value MEMO'
-            elif type_id is float:
-                command += 'value REAL'
-
-            command += ')'
-
-            self.cursor.execute (command)
+                self.cursor.execute (command)
 
         self.connection.commit ()
 
@@ -289,14 +249,6 @@ def database_create (args):
     database = Database (args.database, args.password)
     database.create ()
 
-    database.register (id='CryptoCompare::ETH', description='Ethereum course (CryptoCompare)', type_id=float)
-    database.register (id='CryptoCompare::ETC', description='Ethereum classic course (CryptoCompare)', type_id=float)
-    database.register (id='CryptoCompare::BTC', description='Bitcoin course (CryptoCompare)', type_id=float)
-    database.register (id='CryptoCompare::XMR', description='Monero course (CryptoCompare)', type_id=float)
-    database.register (id='CryptoCompare::XRP', description='Ripple course (CryptoCompare)', type_id=float)
-    database.register (id='CryptoCompare::LTC', description='Litecoin course (CryptoCompare)', type_id=float)
-    database.register (id='CryptoCompare::ZEC', description='ZCash course (CryptoCompare)', type_id=float)
-    database.register (id='CryptoCompare::DASH', description='Dash course (CryptoCompare)', type_id=float)
 
 #
 # List content of database tables

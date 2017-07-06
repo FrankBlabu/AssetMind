@@ -15,6 +15,7 @@ from core.config import Configuration
 from core.time import Timestamp
 from database.database import Database
 from scraper.scraper import Scraper
+from scraper.scraper import Channel
 
 #--------------------------------------------------------------------------
 # Scraper adding data extracted from Cryptocompare to the database
@@ -25,6 +26,34 @@ class CryptoCompareScraper (Scraper):
 
     def __init__ (self):
         super ().__init__ (CryptoCompareScraper.ID)
+
+    #
+    # Get all channels provided by the scraper
+    #
+    # @return List of channels
+    #
+    def get_channels (self):
+
+        channels = []
+
+        channels.append (Channel (id='{scraper}::ETH'.format (scraper=CryptoCompareScraper.ID),
+                                  description='Ethereum course (CryptoCompare)', type=float, encrypted=False))
+        channels.append (Channel (id='{scraper}::ETC'.format (scraper=CryptoCompareScraper.ID),
+                                  description='Ethereum classic course (CryptoCompare)', type=float, encrypted=False))
+        channels.append (Channel (id='{scraper}::BTC'.format (scraper=CryptoCompareScraper.ID),
+                                  description='Bitcoin course (CryptoCompare)', type=float, encrypted=False))
+        channels.append (Channel (id='{scraper}::XMR'.format (scraper=CryptoCompareScraper.ID),
+                                  description='Monero course (CryptoCompare)', type=float, encrypted=False))
+        channels.append (Channel (id='{scraper}::XRP'.format (scraper=CryptoCompareScraper.ID),
+                                  description='Ripple course (CryptoCompare)', type=float, encrypted=False))
+        channels.append (Channel (id='{scraper}::LTC'.format (scraper=CryptoCompareScraper.ID),
+                                  description='Litecoin course (CryptoCompare)', type=float, encrypted=False))
+        channels.append (Channel (id='{scraper}::ZEC'.format (scraper=CryptoCompareScraper.ID),
+                                  description='ZCash course (CryptoCompare)', type=float, encrypted=False))
+        channels.append (Channel (id='{scraper}::DASH'.format (scraper=CryptoCompareScraper.ID),
+                                  description='Dash course (CryptoCompare)', type=float, encrypted=False))
+
+        return channels
 
     #
     # Run scraper for acquiring a set of entries

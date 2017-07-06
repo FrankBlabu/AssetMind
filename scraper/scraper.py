@@ -7,6 +7,17 @@
 
 from abc import ABC, abstractmethod
 
+import core
+
+#
+# Scraper channel
+#
+class Channel (core.common.AttrDict):
+
+    def __repr__ (self):
+        return 'Channel ' + super ().__repr__ ()
+
+
 #
 # Abstract base class for all data scrapers
 #
@@ -19,6 +30,15 @@ class Scraper (ABC):
     #
     def __init__ (self, id):
         self.id = id
+
+    #
+    # Get all channels provided by the scraper
+    #
+    # @return List of channels
+    #
+    @abstractmethod
+    def get_channels (self):
+        pass
 
     #
     # Run scraper for acquiring a set of entries
@@ -51,6 +71,7 @@ class ScraperRegistry:
     @staticmethod
     def get (id):
         return ScraperRegistry.scrapers[id] if id in ScraperRegistry.scrapers else None
+
 
 #
 # Exception thrown by the scraper implementation if anything went wrong
