@@ -6,17 +6,13 @@
 #
 
 import argparse
-import os.path
 import pandas as pd
 import sqlite3
-
-from enum import Enum
 
 import core.common
 
 from core.encryption import Encryption
 from core.time import Timestamp
-from scraper.scraper import Scraper
 from scraper.scraper import ScraperRegistry
 
 

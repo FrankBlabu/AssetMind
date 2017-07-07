@@ -7,7 +7,6 @@
 
 from abc import ABC, abstractmethod
 
-import core
 from core.common import AttrDict
 
 #
@@ -70,8 +69,8 @@ class ScraperRegistry:
     scrapers = {}
 
     @staticmethod
-    def register (scraper, id):
-        ScraperRegistry.scrapers[id] = scraper
+    def register (scraper):
+        ScraperRegistry.scrapers[scraper.ID] = scraper
 
     @staticmethod
     def get (id):

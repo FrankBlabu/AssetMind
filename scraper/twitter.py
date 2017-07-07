@@ -12,13 +12,14 @@
 
 import argparse
 import codecs
-import dateutil.parser
 import nltk.corpus
+import pandas as pd
 import re
 import json
 import string
 import twitter
-import time
+
+import core
 
 from core.time import Timestamp
 from database.database import Database
@@ -122,6 +123,10 @@ class TwitterScraper (Scraper):
         assert database.password is not None
 
         entries = database.get (TwitterScraper.ID + '::' + TwitterScraper.OAUTH_CHANNEL_ID)
+
+        if not entries:
+            raise RuntimeError ('Twitter OAuth credentials not in database. Authenticate first.')
+
         assert len (entries) == 1
 
         return json.loads (entries[0].value)
@@ -153,8 +158,6 @@ class TwitterScraper (Scraper):
                 tweet = self.to_string (q['text'])
                 tweet = self.tokenize (tweet)
                 tweet = [token if self.emoticon_regexp.search (token) else token.lower () for token in tweet]
-
-                print (q['created_at'], Timestamp (q['created_at']))
 
                 entries.append (Entry (timestamp=Timestamp (q['created_at']), value=json.dumps (tweet)))
 
@@ -225,7 +228,14 @@ if __name__ == '__main__':
             scraper.authenticate (database)
 
         elif args.credentials:
-            print (scraper.get_credentials (database))
+            credentials = scraper.get_credentials (database)
+
+            frame = pd.DataFrame (columns=['key', 'content'])
+
+            for key, value in sorted (credentials.items ()):
+                frame.loc[len (frame)] = [key, value]
+
+            core.common.print_frame ('Credentials', frame)
 
         elif args.summary:
             scraper.summary (database)

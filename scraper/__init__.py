@@ -12,5 +12,5 @@ from scraper.twitter import TwitterScraper
 #
 # Register all scrapers which will fill the database
 #
-#ScraperRegistry.register (CryptoCompareScraper (), CryptoCompareScraper.ID)
-ScraperRegistry.register (TwitterScraper (), TwitterScraper.ID)
+ScraperRegistry.register (CryptoCompareScraper ())
+ScraperRegistry.register (TwitterScraper ())
