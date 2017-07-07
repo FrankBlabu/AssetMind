@@ -15,7 +15,6 @@ import argparse
 import gc
 import os
 import time
-import warnings
 
 from keras.layers.core import Dense, Activation, Dropout
 from keras.layers.recurrent import LSTM
