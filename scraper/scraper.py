@@ -8,15 +8,7 @@
 from abc import ABC, abstractmethod
 
 import core
-
-#
-# Scraper channel
-#
-class Channel (core.common.AttrDict):
-
-    def __repr__ (self):
-        return 'Channel ' + super ().__repr__ ()
-
+from core.common import AttrDict
 
 #
 # Abstract base class for all data scrapers
@@ -44,15 +36,28 @@ class Scraper (ABC):
     # Run scraper for acquiring a set of entries
     #
     # @param database Database to be filled
-    # @param ids      List of ids to scrape
     # @param start    Start timestamp (UTC)
     # @param end      End timestamp (UTC)
     # @param interval Interval of scraping
     # @param log      Callback for logging outputs
     #
     @abstractmethod
-    def run (self, database, ids, start, end, interval, log):
+    def run (self, database, start, end, interval, log):
         pass
+
+    #
+    # Split channel id into scraper id / token id
+    #
+    def split_channel_id (self, id):
+        parts = [part.strip () for part in id.split ('::')]
+
+        if len (parts) == 2:
+            return AttrDict (scraper=parts[0], token=parts[1])
+        elif len (parts) == 1:
+            return AttrDict (scraper=None, token=parts[0])
+
+        raise RuntimeError ('Illegal channel id format \'{id}\''.format (id=id))
+
 
 #
 # Registry for all scraper instances to be used

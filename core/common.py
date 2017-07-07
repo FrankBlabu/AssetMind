@@ -5,6 +5,8 @@
 # Frank Blankenburg, Jun. 2017
 #
 
+import pandas as pd
+
 from enum import Enum
 
 #
@@ -14,6 +16,18 @@ class Interval (Enum):
     day    = 1
     hour   = 2
     minute = 3
+
+#
+# Print pandas frame with title line
+#
+def print_frame (title, frame):
+
+    pd.set_option ('display.width', 256)
+    pd.set_option ('display.max_rows', len (frame))
+
+    print (title)
+    print ('-' * len (title))
+    print (frame)
 
 #
 # Generic dictionary with attribute like content access

@@ -6,13 +6,12 @@
 #
 
 import argparse
+import scraper
 
-import scraper.cryptocompare
-import scraper.twitter
-
-from database.database import Database
 from core.time import Timestamp
 from core.config import Configuration
+from database.database import Database
+from scraper.scraper import ScraperRegistry
 
 #
 # This class is controlling the whole data acquisition. Its task is to trigger the registered
@@ -22,13 +21,7 @@ from core.config import Configuration
 class Acquirer:
 
     def __init__ (self):
-        self.sources = []
-
-    #
-    # Add a scraper instance to the sources to be used to fill / complete the database
-    #
-    def add_source (self, source):
-        self.sources.append (source)
+        pass
 
     #
     # Run scraping process
@@ -47,21 +40,21 @@ class Acquirer:
 
         add_to_log ('Starting database acquistion')
 
-        for source in self.sources:
+        for scraper in ScraperRegistry.get_all ():
             #
             # Query database for all points in time this scraper (or any other filling the
             # same database slots) already got data for. Afterwards, the set of timestamps
             # will contain entries for all points in time where the scraper provided
-            # complete data. If any id has missing content, we assume to be a hole there
+            # complete data. If any id has missing content, we assume to be a data hole there
             # because the scraper might only be able to retrieve the data in a block for all
             # ids.
             #
             timestamps = None
 
-            add_to_log ('  Processing source \'\''.format (source.name))
+            add_to_log ('  Processing scraper \'\''.format (scraper.name))
 
-            for id in source.ids:
-                entries = database.get_entries (source.type_id, id)
+            for channel in scraper.get_channels ():
+                entries = database.get (channel.id)
 
                 if timestamps is None:
                     timestamps = set ([entry.timestamp for entry in entries])
@@ -108,8 +101,4 @@ if __name__ == '__main__':
         database.create ()
 
     acquirer = Acquirer ()
-
-    acquirer.add_source (scraper.cryptocompare.CryptoCompareScraper ())
-    #acquirer.add_source (scraper.twitter.TwitterScraper ())
-
     acquirer.run (database, log=lambda text: print (text))
