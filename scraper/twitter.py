@@ -7,6 +7,7 @@
 # Resources:
 #
 # * https://marcobonzanini.com/2015/03/02/mining-twitter-data-with-python-part-1/
+# * OAuth registration: https://apps.twitter.com
 #
 
 import argparse
@@ -19,11 +20,11 @@ import string
 import twitter
 import time
 
+from core.time import Timestamp
 from database.database import Database
 from database.database import Entry
 from database.database import Channel
 from scraper.scraper import Scraper
-
 
 #----------------------------------------------------------------------------
 # Scraper for twitter data
@@ -142,7 +143,7 @@ class TwitterScraper (Scraper):
                                                       credentials['consumer_key'],
                                                       credentials['consumer_secret']))
 
-        for channel, tags in TwitterScraper.CHANNELS:
+        for channel, tags in TwitterScraper.CHANNELS.items ():
 
             query = server.search.tweets (q=' '.join (tags), count=100)
             entries = []
@@ -153,7 +154,9 @@ class TwitterScraper (Scraper):
                 tweet = self.tokenize (tweet)
                 tweet = [token if self.emoticon_regexp.search (token) else token.lower () for token in tweet]
 
-                entries.append (Entry (timestamp=Timestamp (q['created_at']).timestamp ()), value=json.dumps (tweet))
+                print (q['created_at'], Timestamp (q['created_at']))
+
+                entries.append (Entry (timestamp=Timestamp (q['created_at']), value=json.dumps (tweet)))
 
             database.add (TwitterScraper.ID + '::' + channel, entries)
 
@@ -226,6 +229,3 @@ if __name__ == '__main__':
 
         elif args.summary:
             scraper.summary (database)
-
-        else:
-            scraper.run (database, None, lambda message: print (message))
