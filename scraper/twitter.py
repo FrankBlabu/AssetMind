@@ -20,8 +20,9 @@ import twitter
 import time
 
 from database.database import Database
+from database.database import Entry
+from database.database import Channel
 from scraper.scraper import Scraper
-from scraper.scraper import Channel
 
 
 #----------------------------------------------------------------------------
@@ -75,11 +76,11 @@ class TwitterScraper (Scraper):
         for channel in TwitterScraper.CHANNELS.keys ():
             channels.append (Channel (id=TwitterScraper.ID + '::' + channel,
                                       description='Twitter stream ({0})'.format (channel),
-                                      type=str,
+                                      type_id=str,
                                       encrypted=False))
 
         channels.append (Channel (id=TwitterScraper.ID + '::' + TwitterScraper.OAUTH_CHANNEL_ID,
-                                  description='Twitter OAuth credentials', type=str, encrypted=True))
+                                  description='Twitter OAuth credentials', type_id=str, encrypted=True))
 
         return channels
 
@@ -107,7 +108,7 @@ class TwitterScraper (Scraper):
         data['access_secret'] = access_secret
 
         database.add (TwitterScraper.ID + '::' + TwitterScraper.OAUTH_CHANNEL_ID,
-                      Entry (hash='0000', timestamp=Timestamp (), value=json.dumps (data)))
+                      Entry (timestamp=Timestamp (), value=json.dumps (data)))
 
     #
     # Retrieve OAuth credentials from the database
@@ -128,13 +129,12 @@ class TwitterScraper (Scraper):
     # Run scraper for acquiring a set of entries
     #
     # @param database Database to be filled
-    # @param ids      List of ids to scrape
     # @param start    Start timestamp (UTC)
     # @param end      End timestamp (UTC)
     # @param interval Interval of scraping
     # @param log      Callback for logging outputs
     #
-    def run (self, database, ids, start, end, interval, log):
+    def run (self, database, start, end, interval, log):
         credentials = self.get_credentials (database)
 
         server = twitter.Twitter (auth=twitter.OAuth (credentials['access_key'],
@@ -216,9 +216,6 @@ if __name__ == '__main__':
         assert len (args.password) >= 4
 
         database = Database (args.database, args.password)
-        if args.database == ':memory:':
-            database.create ()
-
         scraper = TwitterScraper ()
 
         if args.authenticate:

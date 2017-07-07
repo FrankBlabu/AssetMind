@@ -124,7 +124,6 @@ class CryptoCompareScraper (Scraper):
 if __name__ == '__main__':
 
     database = Database (':memory:')
-    database.create ()
 
     scraper = ScraperRegistry.get (CryptoCompareScraper.ID)
     scraper.run (database=database, start=Timestamp (Configuration.DATABASE_START_DATE), end=Timestamp.now (),

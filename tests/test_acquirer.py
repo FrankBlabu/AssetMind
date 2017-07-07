@@ -46,7 +46,6 @@ class TestAcquirer (unittest.TestCase):
 
 
         database = Database (':memory:')
-        database.create ()
 
         database.add (CoinEntry ('2017-08-12 14:00', 'TST', 'test', 10.0, 'usd'))
         database.add (CoinEntry ('2017-08-12 15:00', 'TST', 'test', 12.0, 'usd'))

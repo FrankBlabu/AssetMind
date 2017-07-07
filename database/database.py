@@ -81,10 +81,6 @@ class Database:
         self.connection = sqlite3.connect (file)
         self.cursor = self.connection.cursor ()
 
-    #
-    # Create database structure
-    #
-    def create (self):
         #
         # Create channel table
         #
@@ -95,30 +91,17 @@ class Database:
         command += 'encrypted BOOLEAN'
         command += ')'
 
-        self.cursor.execute (command)
+        try:
+            self.cursor.execute (command)
+        except sqlite3.OperationalError as e:
+            pass
 
         for scraper in ScraperRegistry.get_all ():
-
             for channel in scraper.get_channels ():
 
                 assert len (channel.id) <= 64
                 assert channel.type in self.types.values ()
                 assert len (channel.type.__name__) <= 64
-
-                #
-                # Register type in administrative database
-                #
-                command = 'INSERT INTO "{id}" '.format (id=Database.CHANNEL_ID)
-                command += '(id, description, type, encrypted) '
-                command += 'values (?, ?, ?, ?)'
-
-                params = []
-                params.append (channel.id)
-                params.append (channel.description)
-                params.append (channel.type.__name__)
-                params.append (channel.encrypted)
-
-                self.cursor.execute (command, params)
 
                 #
                 # Create table for the channel itself
@@ -133,7 +116,29 @@ class Database:
 
                 command += ')'
 
-                self.cursor.execute (command)
+                exists = False
+
+                try:
+                    self.cursor.execute (command)
+                except sqlite3.OperationalError as e:
+                    exists = True
+
+                #
+                # Register type in administrative database
+                #
+                if not exists:
+                    command = 'INSERT INTO "{id}" '.format (id=Database.CHANNEL_ID)
+                    command += '(id, description, type, encrypted) '
+                    command += 'values (?, ?, ?, ?)'
+
+                    params = []
+                    params.append (channel.id)
+                    params.append (channel.description)
+                    params.append (channel.type.__name__)
+                    params.append (channel.encrypted)
+
+                    self.cursor.execute (command, params)
+
 
         self.connection.commit ()
 
@@ -255,17 +260,6 @@ class Database:
 #
 
 #
-# Create new database
-#
-def database_create (args):
-    if os.path.exists (args.database):
-        raise RuntimeError ('Database file {0} already exists.'.format (args.database))
-
-    database = Database (args.database, args.password)
-    database.create ()
-
-
-#
 # List content of database tables
 #
 def database_list (args):
@@ -320,13 +314,11 @@ if __name__ == '__main__':
     parser.add_argument ('database',         type=str, default=None, help='Database file')
 
     args = parser.parse_args ()
-
     assert args.database is not None
 
-    if args.create:
-        database_create (args)
+    database = Database (args.database, args.password)
 
-    elif args.summary:
+    if args.summary:
         database_summary (args)
 
     elif args.list:

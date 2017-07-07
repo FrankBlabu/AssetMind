@@ -32,7 +32,6 @@ class TestDatabase (unittest.TestCase):
         # Create database
         #
         database = Database (':memory:')
-        database.create ()
 
         database.register ('ETH', 'Ethereum coin (CryptoCompare)', float)
         database.register ('BTC', 'Bitcoin (CryptoCompare)', float)
@@ -80,7 +79,6 @@ class TestDatabase (unittest.TestCase):
         # Create database
         #
         database = Database (':memory:')
-        database.create ()
 
         database.register ('ETH', 'Ethereum coin (CryptoCompare)', float)
 
@@ -114,7 +112,6 @@ class TestDatabase (unittest.TestCase):
         # Create database
         #
         database = Database (':memory:', 'secret')
-        database.create ()
 
         database.register ('Twitter XRP', 'Twitter stream (XRP)', str, encrypted=True)
 

@@ -7,10 +7,10 @@
 
 from scraper.scraper import ScraperRegistry
 from scraper.cryptocompare import CryptoCompareScraper
-#from scraper.twitter import TwitterScraper
+from scraper.twitter import TwitterScraper
 
 #
 # Register all scrapers which will fill the database
 #
 ScraperRegistry.register (CryptoCompareScraper (), CryptoCompareScraper.ID)
-#ScraperRegistry.register (TwitterScraper (), TwitterScraper.ID)
+ScraperRegistry.register (TwitterScraper (), TwitterScraper.ID)
