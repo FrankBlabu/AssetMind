@@ -51,7 +51,7 @@ class Acquirer:
             #
             timestamps = None
 
-            add_to_log ('  Processing scraper \'\''.format (scraper.name))
+            add_to_log ('  Processing scraper \'\''.format (scraper.id))
 
             for channel in scraper.get_channels ():
                 entries = database.get (channel.id)
@@ -78,8 +78,8 @@ class Acquirer:
                         .format (start=source_start, end=source_end))
 
             if source_start != source_end or source_start not in timestamps:
-                source.run (database, source_start, source_end, Configuration.DATABASE_SAMPLING_INTERVAL,
-                            lambda text: add_to_log ('    {0}: {1}'.format (source.name, text)))
+                scraper.run (database, source_start, source_end, Configuration.DATABASE_SAMPLING_INTERVAL,
+                             lambda text: add_to_log ('    {0}: {1}'.format (scraper.id, text)))
 
 
 #----------------------------------------------------------------------------

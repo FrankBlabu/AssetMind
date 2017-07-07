@@ -103,7 +103,8 @@ class CryptoCompareScraper (Scraper):
 
                     for price in prices:
                         price_time = Timestamp (price['time'])
-                        entries.append (Entry (timestamp=price_time, value=(price['high'] + price['low']) / 2))
+                        if price_time >= Timestamp (Configuration.DATABASE_START_DATE):
+                            entries.append (Entry (timestamp=price_time, value=(price['high'] + price['low']) / 2))
 
                         if price_time < to:
                             to = price_time

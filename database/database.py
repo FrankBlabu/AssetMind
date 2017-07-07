@@ -278,9 +278,10 @@ def database_list (args):
     for channel in channels:
         if channel.id in ids or 'all' in ids:
 
-            frame = pd.DataFrame (columns=['timestamp', 'value'])
+            entries = database.get (channel.id)
+            frame = pd.DataFrame (columns=['timestamp', 'value'], index=range (len (entries)))
 
-            for entry in database.get (channel.id):
+            for entry in entries:
                 frame.loc[len (frame)] = [entry.timestamp, entry.value]
 
             core.common.print_frame ('{0} [{1}]'.format (channel.id, channel.description), frame)
