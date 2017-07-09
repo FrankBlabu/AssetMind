@@ -16,7 +16,6 @@ import pandas as pd
 import json
 import urllib
 import urllib.request
-import sys
 
 from core.common import Interval
 from core.time import Timestamp

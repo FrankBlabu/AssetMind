@@ -11,3 +11,4 @@ RemoteSystemTempFiles
 .project
 .directory
 log
+*.db
