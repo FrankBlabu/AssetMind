@@ -16,8 +16,8 @@ import pandas as pd
 import json
 import urllib
 import urllib.request
+import sys
 
-from enum import Enum
 from core.common import Interval
 from core.time import Timestamp
 
@@ -42,7 +42,10 @@ class CryptoCompare:
     #
     # markers  - List of markers to be queried
     # currency - Target currency
-    # limit    - Maximum number of entries requested with a single web API call
+    # limit    - Maximum number of entries requested with a single web API call. 200 is the highest
+    #            possible value. Be aware that there seem to be invalid responses which can be
+    #            filtered be checking the previous values for '0' entries. So 'limit' should
+    #            be larger then '1' to be able to do that.
     #
     #markets = ['Poloniex', 'Kraken', 'Coinbase', 'HitBTC']
     markets    = ['Poloniex']
@@ -91,7 +94,34 @@ class CryptoCompare:
         command = command.format (interval=interval.name, id=id, markets=self.id_as_list (CryptoCompare.markets))
 
         r = self.query (command)
-        return r['Data']
+
+        #
+        # The response format is:
+        #
+        '''
+        {
+         "Response": "Success",
+         "Type": 100,
+         "Aggregated": false,
+         "Data": [{"time":1413158400,"close":0,"high":0,"low":0,"open":0,"volumefrom":0,"volumeto":0},...
+         "TimeTo": 1499558400,
+         "TimeFrom": 1413158400,
+         "FirstValueInArray": true,
+         "ConversionType": {"type":"direct","conversionSymbol":""}
+         }
+        '''
+
+        data = sorted (r['Data'], key=lambda value: value['time'])
+        filtered_data = [value for value in data if value['volumefrom'] > 0 and value['volumeto'] > 0]
+
+        #
+        # Due to a bug in the CryptoCompare API, the last data entry can be valid (but seemingly random or not
+        # matching its timestamp) if the requested time interval is not covered. This has to be checked here.
+        #
+        if len (filtered_data) == 1 and len (data) > 1:
+            data = []
+
+        return data
 
     def query (self, command):
 
@@ -126,8 +156,9 @@ def test_historical_prices ():
 
     print (len (prices))
 
-    print (Timestamp (prices[1]['time']))
-    print (Timestamp (prices[-1]['time']))
+    if prices:
+        print (Timestamp (prices[1]['time']))
+        print (Timestamp (prices[-1]['time']))
 
 
 def test_coin_list ():
@@ -153,7 +184,7 @@ def test_error ():
     client = CryptoCompare ()
 
     try:
-        prices = client.get_historical_prices ('XYZ', Timestamp ('2016-04-08 06:00'), Interval.hour)
+        client.get_historical_prices ('XYZ', Timestamp ('2016-04-08 06:00'), Interval.hour)
     except HTTPError as e:
         print ('ERROR:', e.message)
 
@@ -165,6 +196,10 @@ def test_error ():
 if __name__ == '__main__':
 
     client = CryptoCompare ()
+
+    #test_historical_prices ()
+    #sys.exit (0)
+
     coins = client.get_coin_list ()
 
     title = 'Coins'

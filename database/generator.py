@@ -6,13 +6,12 @@
 #
 
 import argparse
+import math
 import numpy as np
 import scraper
 
 from core.config import Configuration
 from database.database import Database
-from database.database import Entry
-from database.database import Channel
 
 #----------------------------------------------------------------------------
 # CLASS Generator
@@ -44,6 +43,8 @@ class Generator:
 
             if channel.type is float:
 
+                print ("Channel: ", channel.id)
+
                 for entry in database.get (channel.id):
                     self.start = min (self.start, entry.timestamp) if self.start else entry.timestamp
                     self.end = max (self.end, entry.timestamp) if self.end else entry.timestamp
@@ -52,7 +53,11 @@ class Generator:
 
         self.steps = (self.end - self.start) / Configuration.DATABASE_SAMPLING_STEP
 
-        if self.steps < self.batchsize + 1:
+        print ("Start: ", self.start)
+        print ("End  : ", self.end)
+        print ("Step : ", self.steps)
+
+        if self.get_number_of_sequences () < 1:
             raise RuntimeError ('Batchsize too large for available data')
 
     #
@@ -62,31 +67,34 @@ class Generator:
     # there is at least one additional step following left to be the expected outcome
     #
     def get_number_of_sequences (self):
-        return self.steps - 1
+        return int (math.floor (self.steps - self.batchsize - 1))
 
     #
     # Return sequence at the given index
     #
     def get_sequence (self, index):
 
+        if index >= self.get_number_of_sequences ():
+            raise RuntimeError ('Index {index} out of bounds. There are {sequences} valid sequences.'
+            .format (index=index, sequences=self.get_number_of_sequences ()))
+
         sequence = np.zeros ((self.batchsize, len (self.channels)))
 
-        x = 0
-        for channel in self.channels:
+        for x in range (len (self.channels)):
+            channel = self.channels[x]
 
-            y = 0
-            for entry in database.get (channel.id):
+            entries = database.get (channel.id)
+
+            for y in range (self.batchsize):
+                entry = entries[index + y]
 
                 if not isinstance (entry.value, float):
-                    raise RuntimeError ('Non numeric data present in channel \'{channel}\''.format (channel=channel.id))
+                    raise RuntimeError ('Non numeric data present in channel \'{channel}\' as position {position}'
+                    .format (channel=channel.id, position=index + y))
 
                 sequence[y][x] = entry.value
-                y = y + 1
-
-            x = x + 1
 
         return sequence
-
 
 
 
@@ -95,6 +103,7 @@ class Generator:
 #
 if __name__ == '__main__':
     parser = argparse.ArgumentParser ()
+
     parser.add_argument ('-e', '--epochs', type=int, default=1, help='Number of training epochs')
     parser.add_argument ('-s', '--sequence', type=int, default=50, help='Training sequence length')
     parser.add_argument ('-p', '--password', type=str, default=None, help='Passwort for database encryption')
@@ -105,7 +114,7 @@ if __name__ == '__main__':
 
     database = Database (args.database, args.password)
 
-    generator = Generator (database,args.sequence)
+    generator = Generator (database, args.sequence)
 
     print (generator.get_number_of_sequences ())
     print (generator.get_sequence (0))
