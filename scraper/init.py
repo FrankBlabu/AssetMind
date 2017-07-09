@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 #
-# __init__.py - Initialization of the scraper library
+# init.py - Initialization of the scrapers
 #
 # Frank Blankenburg, Jul. 2017
 #
@@ -12,5 +12,6 @@ from scraper.twitter import TwitterScraper
 #
 # Register all scrapers which will fill the database
 #
-ScraperRegistry.register (CryptoCompareScraper ())
-ScraperRegistry.register (TwitterScraper ())
+def initialize ():
+    ScraperRegistry.register (CryptoCompareScraper ())
+    ScraperRegistry.register (TwitterScraper ())

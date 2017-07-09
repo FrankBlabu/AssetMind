@@ -7,6 +7,7 @@
 
 import argparse
 import pandas as pd
+import scraper.init
 import sqlite3
 
 import core.common
@@ -92,8 +93,8 @@ class Database:
         except sqlite3.OperationalError as e:
             pass
 
-        for scraper in ScraperRegistry.get_all ():
-            for channel in scraper.get_channels ():
+        for scr in ScraperRegistry.get_all ():
+            for channel in scr.get_channels ():
 
                 assert len (channel.id) <= 64
                 assert channel.type in self.types.values ()
@@ -298,12 +299,13 @@ def database_summary (args):
 #
 if __name__ == '__main__':
 
+    scraper.init.initialize ()
+
     #
     # Parse command line arguments
     #
     parser = argparse.ArgumentParser ()
 
-    parser.add_argument ('-c', '--create',   action='store_true', default=False, help='Create new database')
     parser.add_argument ('-l', '--list',     action='store', default=False, help='List database channel content')
     parser.add_argument ('-s', '--summary',  action='store_true', default=False, help='Print database summary')
     parser.add_argument ('-p', '--password', type=str, default=None, help='Passwort for database encryption')

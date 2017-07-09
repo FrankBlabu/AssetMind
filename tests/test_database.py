@@ -5,15 +5,60 @@
 # Frank Blankenburg, Jun. 2017
 #
 
+import scraper.init
 import unittest
 
 from core.common import Interval
 from core.config import Configuration
 from core.encryption import Encryption
 from core.time import Timestamp
+from scraper.scraper import Scraper
+from scraper.scraper import ScraperRegistry
 
 from database.database import Database
 from database.database import Entry
+from database.database import Channel
+
+
+#--------------------------------------------------------------------------
+# CLASS TestDatabaseScraper
+#
+class TestDatabaseScraper (Scraper):
+
+    ID = 'Test'
+
+    def __init__ (self):
+        super ().__init__ (TestDatabaseScraper.ID)
+
+    #
+    # Get all channels provided by the scraper
+    #
+    # @return List of channels
+    #
+    def get_channels (self):
+
+        channels = []
+
+        channels.append (Channel (id='{scraper}::ETH'.format (scraper=TestDatabaseScraper.ID),
+                                  description='Ethereum course', type_id=float, encrypted=False))
+        channels.append (Channel (id='{scraper}::BTC'.format (scraper=TestDatabaseScraper.ID),
+                                  description='Bitcoin course', type_id=float, encrypted=False))
+        channels.append (Channel (id='{scraper}::Twitter::ETH'.format (scraper=TestDatabaseScraper.ID),
+                                  description='Twitter channel', type_id=str, encrypted=True))
+
+        return channels
+
+    #
+    # Run scraper for acquiring a set of entries
+    #
+    # @param database Database to be filled
+    # @param start    Start timestamp (UTC)
+    # @param end      End timestamp (UTC)
+    # @param interval Interval of scraping
+    # @param log      Callback for logging outputs
+    #
+    def run (self, database, start, end, interval, log):
+        pass
 
 
 #--------------------------------------------------------------------------
@@ -21,21 +66,18 @@ from database.database import Entry
 #
 class TestDatabase (unittest.TestCase):
 
+    Configuration.DATABASE_SAMPLING_INTERVAL = Interval.hour
+    ScraperRegistry.register (TestDatabaseScraper ())
+
     #
     # Test various database read/write operations
     #
     def test_database_read_write (self):
 
-        Configuration.DATABASE_SAMPLING_INTERVAL = Interval.hour
-
         #
         # Create database
         #
         database = Database (':memory:')
-
-        database.register ('ETH', 'Ethereum coin (CryptoCompare)', float)
-        database.register ('BTC', 'Bitcoin (CryptoCompare)', float)
-        database.register ('Twitter_ETH', 'Ethereum twitter news stream', str)
 
         #
         # Add some entries
@@ -45,7 +87,7 @@ class TestDatabase (unittest.TestCase):
         eth_entries.append (Entry (timestamp=Timestamp ('2017-04-21 14:00'), value=240.00))
         eth_entries.append (Entry (timestamp=Timestamp ('2017-04-21 16:00'), value=272.98))
 
-        database.add ('ETH', eth_entries)
+        database.add ('Test::ETH', eth_entries)
 
         btc_entries = []
         btc_entries.append (Entry (timestamp=Timestamp ('2017-04-22 13:00'), value=230.00))
@@ -53,18 +95,18 @@ class TestDatabase (unittest.TestCase):
         btc_entries.append (Entry (timestamp=Timestamp ('2017-04-22 17:00'), value=270.98))
         btc_entries.append (Entry (timestamp=Timestamp ('2017-04-22 19:00'), value=272.78))
 
-        database.add ('BTC', btc_entries)
+        database.add ('Test::BTC', btc_entries)
 
-        entries = database.get_admin_data ()
+        entries = database.get_all_channels ()
 
         self.assertEqual (len (entries), 3)
-        self.assertEqual (entries[0].id, 'ETH')
-        self.assertEqual (entries[2].id, 'Twitter_ETH')
+        self.assertEqual (entries[0].id, 'Test::ETH')
+        self.assertEqual (entries[2].id, 'Test::Twitter::ETH')
 
-        entries = database.get ('ETH')
+        entries = database.get ('Test::ETH')
         self.assertEqual (len (entries), 3)
 
-        entries = database.get ('BTC')
+        entries = database.get ('Test::BTC')
         self.assertEqual (len (entries), 4)
 
 
@@ -73,14 +115,10 @@ class TestDatabase (unittest.TestCase):
     #
     def test_database_overwrite (self):
 
-        Configuration.DATABASE_SAMPLING_INTERVAL = Interval.hour
-
         #
         # Create database
         #
         database = Database (':memory:')
-
-        database.register ('ETH', 'Ethereum coin (CryptoCompare)', float)
 
         #
         # Setup some coin entries
@@ -92,9 +130,9 @@ class TestDatabase (unittest.TestCase):
 
         entries.append (Entry (timestamp=Timestamp ('2017-06-18 15:00'), value=242.0))
 
-        database.add ('ETH', entries)
+        database.add ('Test::ETH', entries)
 
-        entries = database.get ('ETH')
+        entries = database.get ('Test::ETH')
         self.assertEqual (len (entries), 3)
 
         for entry in entries:
@@ -106,14 +144,10 @@ class TestDatabase (unittest.TestCase):
     #
     def test_database_encryption (self):
 
-        Configuration.DATABASE_SAMPLING_INTERVAL = Interval.hour
-
         #
         # Create database
         #
         database = Database (':memory:', 'secret')
-
-        database.register ('Twitter XRP', 'Twitter stream (XRP)', str, encrypted=True)
 
         #
         # Automatic password generation
@@ -132,9 +166,9 @@ class TestDatabase (unittest.TestCase):
         text2 = "{'login': 'xyz123', 'auth': 42}"
         entries.append (Entry (timestamp=Timestamp ('2017-08-14 16:00'), value=text2))
 
-        database.add ('Twitter XRP', entries)
+        database.add ('Test::Twitter::ETH', entries)
 
-        entries = database.get ('Twitter XRP')
+        entries = database.get ('Test::Twitter::ETH')
 
         self.assertEqual (len (entries), 2)
         self.assertEqual (entries[0].value, text1)

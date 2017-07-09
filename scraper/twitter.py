@@ -32,7 +32,7 @@ from scraper.scraper import Scraper
 #
 class TwitterScraper (Scraper):
 
-    ID = 'twitter'
+    ID = 'Twitter'
     APP_NAME = 'AssetMind'
 
     OAUTH_CHANNEL_ID = 'OAuth'
