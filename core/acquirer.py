@@ -40,7 +40,7 @@ class Acquirer:
 
         add_to_log ('Starting database acquistion')
 
-        for scraper in ScraperRegistry.get_all ():
+        for source in ScraperRegistry.get_all ():
             #
             # Query database for all points in time this scraper (or any other filling the
             # same database slots) already got data for. Afterwards, the set of timestamps
@@ -51,9 +51,9 @@ class Acquirer:
             #
             timestamps = None
 
-            add_to_log ('  Processing scraper \'\''.format (scraper.id))
+            add_to_log ('  Processing scraper \'{id}\''.format (id=source.id))
 
-            for channel in scraper.get_channels ():
+            for channel in source.get_channels ():
                 entries = database.get (channel.id)
 
                 if timestamps is None:
@@ -78,8 +78,8 @@ class Acquirer:
                         .format (start=source_start, end=source_end))
 
             if source_start != source_end or source_start not in timestamps:
-                scraper.run (database, source_start, source_end, Configuration.DATABASE_SAMPLING_INTERVAL,
-                             lambda text: add_to_log ('    {0}: {1}'.format (scraper.id, text)))
+                source.run (database, source_start, source_end, Configuration.DATABASE_SAMPLING_INTERVAL,
+                            lambda text: add_to_log ('    {0}: {1}'.format (source.id, text)))
 
 
 #----------------------------------------------------------------------------

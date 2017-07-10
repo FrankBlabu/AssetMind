@@ -135,6 +135,10 @@ if __name__ == '__main__':
         entries = database.get (channel.id)
         timestamps = [entry.timestamp for entry in entries]
 
-        frame.loc[len (frame)] = [channel.id, channel.description, min (timestamps), max (timestamps), len (entries)]
+        frame.loc[len (frame)] = [channel.id,
+                                  channel.description,
+                                  min (timestamps) if timestamps else '-',
+                                  max (timestamps) if timestamps else '-',
+                                  len (entries)]
 
     core.common.print_frame ('Scraped data', frame)

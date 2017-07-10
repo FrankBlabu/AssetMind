@@ -6,7 +6,6 @@
 #
 
 from abc import ABC, abstractmethod
-
 from core.common import AttrDict
 
 #
@@ -50,8 +49,8 @@ class Scraper (ABC):
     def split_channel_id (self, id):
         parts = [part.strip () for part in id.split ('::')]
 
-        if len (parts) == 2:
-            return AttrDict (scraper=parts[0], token=parts[1])
+        if len (parts) >= 2:
+            return AttrDict (scraper=parts[0], token='::'.join (parts[1:]))
         elif len (parts) == 1:
             return AttrDict (scraper=None, token=parts[0])
 
@@ -79,6 +78,7 @@ class ScraperRegistry:
     @staticmethod
     def get_all ():
         return ScraperRegistry.scrapers.values ()
+
 
 #
 # Exception thrown by the scraper implementation if anything went wrong

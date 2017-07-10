@@ -7,7 +7,6 @@
 
 import argparse
 import pandas as pd
-import scraper.init
 import sqlite3
 
 import core.common
@@ -202,6 +201,7 @@ class Database:
         assert id is not Database.CHANNEL_ID
 
         channel = self.get_channel (id)
+        assert channel
 
         command = 'SELECT * FROM "{channel}"'.format (channel=id)
         rows = self.cursor.execute (command)
@@ -298,8 +298,6 @@ def database_summary (args):
 # MAIN
 #
 if __name__ == '__main__':
-
-    scraper.init.initialize ()
 
     #
     # Parse command line arguments
