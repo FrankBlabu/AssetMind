@@ -6,6 +6,7 @@
 #
 
 import argparse
+import copy
 import math
 import numpy as np
 import scraper
@@ -39,23 +40,49 @@ class Generator:
         self.end = None
         self.channels = []
 
-        for channel in database.get_all_channels ():
+        timestamps = {}
 
-            if channel.type is float:
+        channels = [channel for channel in database.get_all_channels () if channel.type is float]
+        for channel in channels:
 
-                print ("Channel: ", channel.id)
+            print ("Channel: ", channel.id)
 
-                for entry in database.get (channel.id):
-                    self.start = min (self.start, entry.timestamp) if self.start else entry.timestamp
-                    self.end = max (self.end, entry.timestamp) if self.end else entry.timestamp
+            for entry in database.get (channel.id):
+                self.start = min (self.start, entry.timestamp) if self.start else entry.timestamp
+                self.end = max (self.end, entry.timestamp) if self.end else entry.timestamp
 
-                self.channels.append (channel)
+                if entry.timestamp not in timestamps:
+                    timestamps[entry.timestamp] = [channel.id]
+                else:
+                    timestamps[entry.timestamp].append (channel.id)
 
-        self.steps = (self.end - self.start) / Configuration.DATABASE_SAMPLING_STEP
+            self.channels.append (channel)
+
+        timestamps = {k: v for k, v in timestamps.items () if len (v) == len (channels)}
 
         print ("Start: ", self.start)
         print ("End  : ", self.end)
-        print ("Step : ", self.steps)
+
+        #
+        # Compute the time span with complete data which can be used for training
+        #
+        keys = sorted (timestamps.keys ())
+
+        self.block_end = keys[-1] if keys else None
+        self.block_start = copy.deepcopy (self.block_end)
+        self.steps = 0
+
+        if self.block_end:
+            previous = copy.deepcopy (self.block_start)
+            previous.advance (step=-Configuration.DATABASE_SAMPLING_STEP)
+
+            while previous in timestamps:
+                self.block_start = previous
+                previous.advance (step=-Configuration.DATABASE_SAMPLING_STEP)
+
+            self.steps = (self.block_end - self.block_start) / Configuration.DATABASE_SAMPLING_STEP
+
+        print ("Block: ", self.block_start, " / ", self.block_end, " / ", self.steps)
 
         if self.get_number_of_sequences () < 1:
             raise RuntimeError ('Batchsize too large for available data')
@@ -117,4 +144,3 @@ if __name__ == '__main__':
     generator = Generator (database, args.sequence)
 
     print (generator.get_number_of_sequences ())
-    print (generator.get_sequence (0))
