@@ -76,7 +76,7 @@ class Generator:
 
         if index >= self.get_number_of_sequences ():
             raise RuntimeError ('Index {index} out of bounds. There are {sequences} valid sequences.'
-            .format (index=index, sequences=self.get_number_of_sequences ()))
+                                .format (index=index, sequences=self.get_number_of_sequences ()))
 
         sequence = np.zeros ((self.batchsize, len (self.channels)))
 
@@ -90,7 +90,7 @@ class Generator:
 
                 if not isinstance (entry.value, float):
                     raise RuntimeError ('Non numeric data present in channel \'{channel}\' as position {position}'
-                    .format (channel=channel.id, position=index + y))
+                                        .format (channel=channel.id, position=index + y))
 
                 sequence[y][x] = entry.value
 

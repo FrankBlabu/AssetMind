@@ -30,5 +30,3 @@ class Configuration:
         DATABASE_SAMPLING_STEP = timedelta (days=1)
     elif DATABASE_SAMPLING_INTERVAL is Interval.minute:
         DATABASE_SAMPLING_STEP = timedelta (minutes=1)
-
-    

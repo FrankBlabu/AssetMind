@@ -45,7 +45,7 @@ class GDAXScraper (Scraper):
         #
         entries = []
 
-        for coin in selected_coins:
+        for coin in GDAXScraper.selected_coins:
             for rate in client.getProductHistoricRates (product='{0}-USD'.format (coin), granularity=60 * 60 * 24, start=start, end=end):
                 database.add (CoinEntry (rate[0], coin, 'gdax', (rate[1] + rate[2]) / 2, 'usd'))
 

@@ -16,7 +16,7 @@ from database.database import CoinEntry
 #
 def plot (database):
 
-    entries =  database.get_entries (CoinEntry.ID)
+    entries = database.get_entries (CoinEntry.ID)
 
     parts = {}
 
@@ -29,7 +29,7 @@ def plot (database):
 
     count = 1
     for coin in sorted (list (parts.keys ())):
-        plt.subplot (len (coins), 1, count)
+        plt.subplot (len (coin), 1, count)
         plt.plot ([m[0] for m in parts[coin]], [m[1] for m in parts[coin]])
         plt.ylabel (coin)
 
