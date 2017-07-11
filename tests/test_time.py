@@ -7,6 +7,8 @@
 
 import unittest
 
+from core.common import Interval
+from core.config import Configuration
 from core.time import Timestamp
 from datetime import datetime
 from datetime import timedelta
@@ -16,6 +18,8 @@ from datetime import timedelta
 # CLASS TestTimestamp
 #
 class TestTimestamp (unittest.TestCase):
+
+    Configuration.DATABASE_SAMPLING_INTERVAL = Interval.hour
 
     def test_timestamp_create (self):
 
@@ -51,9 +55,9 @@ class TestTimestamp (unittest.TestCase):
 
     def test_timestamp_advance (self):
 
-        s = Timestamp ('2017-04-21 14:00')
+        s = Timestamp ('2017-04-21 14h')
         s.advance (hours=+2)
-        self.assertEqual (s, Timestamp ('2017-04-21 16:00'))
+        self.assertEqual (s, Timestamp ('2017-04-21 16h'))
 
         s = Timestamp ('2017-04-21 14:00')
         s.advance (hours=-3)

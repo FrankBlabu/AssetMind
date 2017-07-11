@@ -5,7 +5,6 @@
 # Frank Blankenburg, Jun. 2017
 #
 
-import scraper.init
 import unittest
 
 from core.common import Interval
@@ -40,11 +39,11 @@ class TestDatabaseScraper (Scraper):
         channels = []
 
         channels.append (Channel (id='{scraper}::ETH'.format (scraper=TestDatabaseScraper.ID),
-                                  description='Ethereum course', type_id=float, encrypted=False))
+                                  description='Ethereum course', type_id=float))
         channels.append (Channel (id='{scraper}::BTC'.format (scraper=TestDatabaseScraper.ID),
-                                  description='Bitcoin course', type_id=float, encrypted=False))
+                                  description='Bitcoin course', type_id=float))
         channels.append (Channel (id='{scraper}::Twitter::ETH'.format (scraper=TestDatabaseScraper.ID),
-                                  description='Twitter channel', type_id=str, encrypted=True))
+                                  description='Twitter channel', type_id=str))
 
         return channels
 
@@ -99,9 +98,9 @@ class TestDatabase (unittest.TestCase):
 
         entries = database.get_all_channels ()
 
-        self.assertEqual (len (entries), 3)
-        self.assertEqual (entries[0].id, 'Test::ETH')
-        self.assertEqual (entries[2].id, 'Test::Twitter::ETH')
+        self.assertTrue (len (entries) >= 3)
+        self.assertTrue ('Test::ETH' in [entry.id for entry in entries])
+        self.assertTrue ('Test::Twitter::ETH' in [entry.id for entry in entries])
 
         entries = database.get ('Test::ETH')
         self.assertEqual (len (entries), 3)
@@ -158,18 +157,12 @@ class TestDatabase (unittest.TestCase):
 
         self.assertNotEqual (password1, password2)
 
-        entries = []
-
         text1 = "{'text': 'abc', 'id': 23}"
-        entries.append (Entry (timestamp=Timestamp ('2017-08-12 11:00'), value=text1))
-
         text2 = "{'login': 'xyz123', 'auth': 42}"
-        entries.append (Entry (timestamp=Timestamp ('2017-08-14 16:00'), value=text2))
 
-        database.add ('Test::Twitter::ETH', entries)
+        database.add_credential ('Test::Text1', text1)
+        database.add_credential ('Test::Text2', text2)
 
-        entries = database.get ('Test::Twitter::ETH')
-
-        self.assertEqual (len (entries), 2)
-        self.assertEqual (entries[0].value, text1)
-        self.assertEqual (entries[1].value, text2)
+        self.assertEqual (database.get_credential ('Test::Text1'), text1)
+        self.assertEqual (database.get_credential ('Test::Text2'), text2)
+        self.assertEqual (database.get_credential ('Test::Text3'), None)

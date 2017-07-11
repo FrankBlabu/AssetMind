@@ -6,10 +6,11 @@
 #
 
 import unittest
-import scraper.init
 
 from datetime import timedelta
 
+from scraper.scraper import Scraper
+from scraper.scraper import ScraperRegistry
 from database.database import Database
 from database.database import Channel
 from database.database import Entry
@@ -17,8 +18,6 @@ from core.acquirer import Acquirer
 from core.config import Configuration
 from core.common import Interval
 from core.time import Timestamp
-from scraper.scraper import Scraper
-from scraper.scraper import ScraperRegistry
 
 
 #--------------------------------------------------------------------------
@@ -38,13 +37,14 @@ class TestScraper (Scraper):
         channels = []
 
         channels.append (Channel (id='{scraper}::TST'.format (scraper=TestScraper.ID),
-                                  description='Test channel', type_id=float, encrypted=False))
+                                  description='Test channel', type_id=float))
 
         return channels
 
 
     def run (self, database, start, end, interval, log):
         self.refresh = (start, end)
+
 
 #--------------------------------------------------------------------------
 # CLASS TestAcquirer
@@ -71,26 +71,28 @@ class TestAcquirer (unittest.TestCase):
 
         database.add ('Test::TST', entries)
 
-        scraper = TestScraper ()
+        scr = TestScraper ()
+        ScraperRegistry.scrapers = {}
+        ScraperRegistry.register (scr)
 
         acquirer = Acquirer ()
 
-        scraper.refresh = (None, None)
+        scr.refresh = (None, None)
         acquirer.run (database, Timestamp ('2017-08-12 12:00'), Timestamp ('2017-08-12 16:00'))
-        self.assertEqual (scraper.refresh[0], Timestamp ('2017-08-12 12:00'))
-        self.assertEqual (scraper.refresh[1], Timestamp ('2017-08-12 13:00'))
+        self.assertEqual (scr.refresh[0], Timestamp ('2017-08-12 12:00'))
+        self.assertEqual (scr.refresh[1], Timestamp ('2017-08-12 13:00'))
 
-        scraper.refresh = (None, None)
+        scr.refresh = (None, None)
         acquirer.run (database, Timestamp ('2017-08-12 12:00'), Timestamp ('2017-08-12 17:00'))
-        self.assertEqual (scraper.refresh[0], Timestamp ('2017-08-12 12:00'))
-        self.assertEqual (scraper.refresh[1], Timestamp ('2017-08-12 13:00'))
+        self.assertEqual (scr.refresh[0], Timestamp ('2017-08-12 12:00'))
+        self.assertEqual (scr.refresh[1], Timestamp ('2017-08-12 13:00'))
 
-        scraper.refresh = (None, None)
+        scr.refresh = (None, None)
         acquirer.run (database, Timestamp ('2017-08-12 14:00'), Timestamp ('2017-08-12 19:00'))
-        self.assertEqual (scraper.refresh[0], Timestamp ('2017-08-12 18:00'))
-        self.assertEqual (scraper.refresh[1], Timestamp ('2017-08-12 19:00'))
+        self.assertEqual (scr.refresh[0], Timestamp ('2017-08-12 18:00'))
+        self.assertEqual (scr.refresh[1], Timestamp ('2017-08-12 19:00'))
 
-        scraper.refresh = (None, None)
+        scr.refresh = (None, None)
         acquirer.run (database, Timestamp ('2017-08-12 14:00'), Timestamp ('2017-08-12 17:00'))
-        self.assertEqual (scraper.refresh[0], None)
-        self.assertEqual (scraper.refresh[1], None)
+        self.assertEqual (scr.refresh[0], None)
+        self.assertEqual (scr.refresh[1], None)
