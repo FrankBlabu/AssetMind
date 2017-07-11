@@ -7,12 +7,14 @@
 
 import argparse
 import copy
+import itertools
 import math
 import numpy as np
 import scraper
 
 from core.config import Configuration
 from database.database import Database
+
 
 #----------------------------------------------------------------------------
 # CLASS Generator
@@ -36,32 +38,19 @@ class Generator:
         # Compute timespan in which training data is available and the channels
         # which are providing a numeric data stream
         #
-        self.start = None
-        self.end = None
+        timestamps = self.create_timestamp_map ()
+
+        self.start = min (timestamps.keys ())
+        self.end = max (timestamps.keys ())
+
         self.channels = []
+        for k, v in timestamps.items ():
+            self.channels.extend (v)
+        self.channels = sorted (list (set (self.channels)))
 
-        timestamps = {}
+        timestamps = {k: v for k, v in timestamps.items () if len (v) == len (self.channels)}
 
-        channels = [channel for channel in database.get_all_channels () if channel.type is float]
-        for channel in channels:
-
-            print ("Channel: ", channel.id)
-
-            for entry in database.get (channel.id):
-                self.start = min (self.start, entry.timestamp) if self.start else entry.timestamp
-                self.end = max (self.end, entry.timestamp) if self.end else entry.timestamp
-
-                if entry.timestamp not in timestamps:
-                    timestamps[entry.timestamp] = [channel.id]
-                else:
-                    timestamps[entry.timestamp].append (channel.id)
-
-            self.channels.append (channel)
-
-        timestamps = {k: v for k, v in timestamps.items () if len (v) == len (channels)}
-
-        print ("Start: ", self.start)
-        print ("End  : ", self.end)
+        print (sorted (timestamps.keys ()))
 
         #
         # Compute the time span with complete data which can be used for training
@@ -81,8 +70,6 @@ class Generator:
                 previous.advance (step=-Configuration.DATABASE_SAMPLING_STEP)
 
             self.steps = (self.block_end - self.block_start) / Configuration.DATABASE_SAMPLING_STEP
-
-        print ("Block: ", self.block_start, " / ", self.block_end, " / ", self.steps)
 
         if self.get_number_of_sequences () < 1:
             raise RuntimeError ('Batchsize too large for available data')
@@ -123,6 +110,27 @@ class Generator:
 
         return sequence
 
+    #
+    # Return all timestamps available in the database together with the ids of the
+    # channels contributing to these.
+    #
+    # Only channels containing float data are considered.
+    #
+    # @return Map of {timestamp: [channel ids]} format
+    #
+    def create_timestamp_map (self):
+
+        timestamps = {}
+
+        for channel in [channel for channel in database.get_all_channels () if channel.type is float]:
+
+            for entry in database.get (channel.id):
+                if entry.timestamp not in timestamps:
+                    timestamps[entry.timestamp] = [channel.id]
+                else:
+                    timestamps[entry.timestamp].append (channel.id)
+
+        return timestamps
 
 
 #----------------------------------------------------------------------------
@@ -131,16 +139,18 @@ class Generator:
 if __name__ == '__main__':
     parser = argparse.ArgumentParser ()
 
-    parser.add_argument ('-e', '--epochs', type=int, default=1, help='Number of training epochs')
-    parser.add_argument ('-s', '--sequence', type=int, default=50, help='Training sequence length')
+    parser.add_argument ('-b', '--batchsize', type=int, default=50, help='Training batchsize / sequence length')
     parser.add_argument ('-p', '--password', type=str, default=None, help='Passwort for database encryption')
-    parser.add_argument ('-v', '--verbose',  action='store_true', default=False, help='Verbose output')
     parser.add_argument ('database', type=str, default=':memory:', help='Database file')
 
     args = parser.parse_args ()
 
     database = Database (args.database, args.password)
+    generator = Generator (database, args.batchsize)
 
-    generator = Generator (database, args.sequence)
+    print ('Summary')
+    print ('-------')
+
+    print ('Latest entry in database: ')
 
     print (generator.get_number_of_sequences ())

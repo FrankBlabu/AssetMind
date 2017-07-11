@@ -78,11 +78,7 @@ class TwitterScraper (Scraper):
         for channel in TwitterScraper.CHANNELS.keys ():
             channels.append (Channel (id=TwitterScraper.ID + '::' + channel,
                                       description='Twitter stream ({0})'.format (channel),
-                                      type_id=str,
-                                      encrypted=False))
-
-        channels.append (Channel (id=TwitterScraper.ID + '::' + TwitterScraper.OAUTH_CHANNEL_ID,
-                                  description='Twitter OAuth credentials', type_id=str, encrypted=True))
+                                      type_id=str))
 
         return channels
 
@@ -109,8 +105,7 @@ class TwitterScraper (Scraper):
         data['access_key'] = access_key
         data['access_secret'] = access_secret
 
-        database.add (TwitterScraper.ID + '::' + TwitterScraper.OAUTH_CHANNEL_ID,
-                      Entry (timestamp=Timestamp (), value=json.dumps (data)))
+        database.add_credential (id=TwitterScraper.ID + '::' + TwitterScraper.OAUTH_CHANNEL_ID, value=json.dumps (data))
 
     #
     # Retrieve OAuth credentials from the database
@@ -122,14 +117,12 @@ class TwitterScraper (Scraper):
         assert database is not None
         assert database.password is not None
 
-        entries = database.get (TwitterScraper.ID + '::' + TwitterScraper.OAUTH_CHANNEL_ID)
+        cred = database.get_credential (TwitterScraper.ID + '::' + TwitterScraper.OAUTH_CHANNEL_ID)
 
-        if not entries:
+        if not cred:
             raise RuntimeError ('Twitter OAuth credentials not in database. Authenticate first.')
 
-        assert len (entries) == 1
-
-        return json.loads (entries[0].value)
+        return json.loads (cred)
 
     #
     # Run scraper for acquiring a set of entries

@@ -38,21 +38,21 @@ class CryptoCompareScraper (Scraper):
         channels = []
 
         channels.append (Channel (id='{scraper}::ETH'.format (scraper=CryptoCompareScraper.ID),
-                                  description='Ethereum course (CryptoCompare)', type_id=float, encrypted=False))
+                                  description='Ethereum course (CryptoCompare)', type_id=float))
         channels.append (Channel (id='{scraper}::ETC'.format (scraper=CryptoCompareScraper.ID),
-                                  description='Ethereum classic course (CryptoCompare)', type_id=float, encrypted=False))
+                                  description='Ethereum classic course (CryptoCompare)', type_id=float))
         channels.append (Channel (id='{scraper}::BTC'.format (scraper=CryptoCompareScraper.ID),
-                                  description='Bitcoin course (CryptoCompare)', type_id=float, encrypted=False))
+                                  description='Bitcoin course (CryptoCompare)', type_id=float))
         channels.append (Channel (id='{scraper}::XMR'.format (scraper=CryptoCompareScraper.ID),
-                                  description='Monero course (CryptoCompare)', type_id=float, encrypted=False))
+                                  description='Monero course (CryptoCompare)', type_id=float))
         channels.append (Channel (id='{scraper}::XRP'.format (scraper=CryptoCompareScraper.ID),
-                                  description='Ripple course (CryptoCompare)', type_id=float, encrypted=False))
+                                  description='Ripple course (CryptoCompare)', type_id=float))
         channels.append (Channel (id='{scraper}::LTC'.format (scraper=CryptoCompareScraper.ID),
-                                  description='Litecoin course (CryptoCompare)', type_id=float, encrypted=False))
+                                  description='Litecoin course (CryptoCompare)', type_id=float))
         channels.append (Channel (id='{scraper}::ZEC'.format (scraper=CryptoCompareScraper.ID),
-                                  description='ZCash course (CryptoCompare)', type_id=float, encrypted=False))
+                                  description='ZCash course (CryptoCompare)', type_id=float))
         channels.append (Channel (id='{scraper}::DASH'.format (scraper=CryptoCompareScraper.ID),
-                                  description='Dash course (CryptoCompare)', type_id=float, encrypted=False))
+                                  description='Dash course (CryptoCompare)', type_id=float))
 
         return channels
 
@@ -103,8 +103,10 @@ class CryptoCompareScraper (Scraper):
 
                     for price in prices:
                         price_time = Timestamp (price['time'])
-                        if price_time >= Timestamp (Configuration.DATABASE_START_DATE):
-                            entries.append (Entry (timestamp=price_time, value=(price['high'] + price['low']) / 2))
+                        price = (price['high'] + price['low']) / 2
+
+                        if price_time >= Timestamp (Configuration.DATABASE_START_DATE) and price > 0:
+                            entries.append (Entry (timestamp=price_time, value=price))
 
                         if price_time < to:
                             to = price_time

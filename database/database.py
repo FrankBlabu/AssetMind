@@ -38,16 +38,15 @@ class Entry:
 #
 class Channel:
 
-    def __init__ (self, id, description, type_id, encrypted=False):
+    def __init__ (self, id, description, type_id):
 
         self.id = id
         self.description = description
         self.type = type_id
-        self.encrypted = encrypted
 
     def __repr__ (self):
-        return 'Channel (id={id}, description={description}, type={type}, encrypted={encrypted})' \
-        .format (id=self.id, description=self.description, type=self.type, encrypted=self.encrypted)
+        return 'Channel (id={id}, description={description}, type={type})' \
+        .format (id=self.id, description=self.description, type=self.type)
 
 
 
@@ -57,9 +56,10 @@ class Channel:
 class Database:
 
     #
-    # Table id used for channel data
+    # Internal table ids
     #
-    CHANNEL_ID = 'channels'
+    CHANNELS_ID    = 'internal::channels'
+    CREDENTIALS_ID = 'internal::credentials'
 
     #
     # Constructor
@@ -80,11 +80,10 @@ class Database:
         #
         # Create channel table
         #
-        command = 'CREATE TABLE {id} ('.format (id=Database.CHANNEL_ID)
+        command = 'CREATE TABLE "{id}" ('.format (id=Database.CHANNELS_ID)
         command += 'id VARCHAR (64), '
         command += 'description MEMO, '
-        command += 'type VARCHAR (64), '
-        command += 'encrypted BOOLEAN'
+        command += 'type VARCHAR (64)'
         command += ')'
 
         try:
@@ -92,6 +91,22 @@ class Database:
         except sqlite3.OperationalError as e:
             pass
 
+        #
+        # Create credential table
+        #
+        command = 'CREATE TABLE "{id}" ('.format (id=Database.CREDENTIALS_ID)
+        command += 'id VARCHAR (64), '
+        command += 'value MEMO'
+        command += ')'
+
+        try:
+            self.cursor.execute (command)
+        except sqlite3.OperationalError as e:
+            pass
+
+        #
+        # Create tables for the registered scraper channels
+        #
         for scr in ScraperRegistry.get_all ():
             for channel in scr.get_channels ():
 
@@ -99,9 +114,6 @@ class Database:
                 assert channel.type in self.types.values ()
                 assert len (channel.type.__name__) <= 64
 
-                #
-                # Create table for the channel itself
-                #
                 command = 'CREATE TABLE "{id}" ('.format (id=channel.id)
                 command += 'timestamp LONG NOT NULL, '
 
@@ -120,18 +132,17 @@ class Database:
                     exists = True
 
                 #
-                # Register type in administrative database
+                # Register type in channel database
                 #
                 if not exists:
-                    command = 'INSERT INTO "{id}" '.format (id=Database.CHANNEL_ID)
-                    command += '(id, description, type, encrypted) '
-                    command += 'values (?, ?, ?, ?)'
+                    command = 'INSERT INTO "{id}" '.format (id=Database.CHANNELS_ID)
+                    command += '(id, description, type) '
+                    command += 'values (?, ?, ?)'
 
                     params = []
                     params.append (channel.id)
                     params.append (channel.description)
                     params.append (channel.type.__name__)
-                    params.append (channel.encrypted)
 
                     self.cursor.execute (command, params)
 
@@ -151,13 +162,13 @@ class Database:
     #
     def add (self, id, entries):
 
+        assert id is not Database.CHANNELS_ID
+        assert id is not Database.CREDENTIALS_ID
+
         #
         # Fetch channel entry
         #
         channel = self.get_channel (id)
-
-        assert not channel.encrypted or isinstance (self.password, str)
-        assert not channel.encrypted or len (self.password) >= 4
 
         if not isinstance (entries, list):
             entries = [entries]
@@ -182,11 +193,7 @@ class Database:
 
             params = []
             params.append (entry.timestamp.epoch ())
-
-            if channel.encrypted:
-                params.append (self.encryption.encrypt (entry.value, self.password))
-            else:
-                params.append (entry.value)
+            params.append (entry.value)
 
             self.cursor.execute (command, params)
 
@@ -198,7 +205,8 @@ class Database:
     #
     def get (self, id):
 
-        assert id is not Database.CHANNEL_ID
+        assert id is not Database.CHANNELS_ID
+        assert id is not Database.CREDENTIALS_ID
 
         channel = self.get_channel (id)
         assert channel
@@ -206,20 +214,14 @@ class Database:
         command = 'SELECT * FROM "{channel}"'.format (channel=id)
         rows = self.cursor.execute (command)
 
-        entries = [Entry (timestamp=Timestamp (row[0]), value=row[1]) for row in rows]
-
-        if channel.encrypted:
-            for entry in entries:
-                entry.value = self.encryption.decrypt (entry.value, self.password)
-
-        return entries
+        return [Entry (timestamp=Timestamp (row[0]), value=row[1]) for row in rows]
 
     #
     # Return administrative entry for a single channel
     #
     def get_channel (self, id):
 
-        command = 'SELECT * FROM "{table}"'.format (table=Database.CHANNEL_ID)
+        command = 'SELECT * FROM "{table}"'.format (table=Database.CHANNELS_ID)
         command += ' WHERE id="{id}"'.format (id=id)
 
         rows = list (self.cursor.execute (command))
@@ -231,7 +233,7 @@ class Database:
         row = rows[0]
 
         assert row[2] in self.types
-        return Channel (id=row[0], description=row[1], type_id=self.types[row[2]], encrypted=row[3])
+        return Channel (id=row[0], description=row[1], type_id=self.types[row[2]])
 
 
     #
@@ -239,7 +241,7 @@ class Database:
     #
     def get_all_channels (self):
 
-        command = 'SELECT * FROM "{table}"'.format (table=Database.CHANNEL_ID)
+        command = 'SELECT * FROM "{table}"'.format (table=Database.CHANNELS_ID)
 
         rows = self.cursor.execute (command)
 
@@ -247,9 +249,61 @@ class Database:
 
         for row in rows:
             assert row[2] in self.types
-            entries.append (Channel (id=row[0], description=row[1], type_id=self.types[row[2]], encrypted=row[3]))
+            entries.append (Channel (id=row[0], description=row[1], type_id=self.types[row[2]]))
 
         return entries
+
+    #
+    # Add credential to database
+    #
+    def add_credential (self, id, value):
+
+        assert isinstance (self.password, str)
+        assert len (self.password) >= 4
+        assert isinstance (id, str)
+        assert len (id) <= 64
+        assert isinstance (value, str)
+
+        command = 'DELETE FROM "{channel}"'.format (channel=Database.CREDENTIALS_ID)
+        command += ' WHERE id="{id}"'.format (id=id)
+
+        self.cursor.execute (command)
+
+        command = 'INSERT INTO "{channel}" '.format (channel=Database.CREDENTIALS_ID)
+        command += '(id, value) '
+        command += 'values (?, ?)'
+
+        params = []
+        params.append (id)
+        params.append (self.encryption.encrypt (value, self.password))
+
+        self.cursor.execute (command, params)
+
+        self.connection.commit ()
+
+    #
+    # Read credentials
+    #
+    def get_credential (self, id):
+
+        command = 'SELECT * FROM "{channel}"'.format (channel=Database.CREDENTIALS_ID)
+        command += ' WHERE id="{id}"'.format (id=id)
+
+        rows = list (self.cursor.execute (command))
+        assert len (rows) < 2
+
+        return self.encryption.decrypt (rows[0][1], self.password) if rows else None
+
+    #
+    # Return list of credential ids present in the database
+    #
+    def get_all_credential_ids (self):
+
+        command = 'SELECT * FROM "{channel}"'.format (channel=Database.CREDENTIALS_ID)
+
+        rows = self.cursor.execute (command)
+
+        return [row[0] for row in rows]
 
 
 #--------------------------------------------------------------------------
@@ -285,13 +339,20 @@ def database_list (args):
 def database_summary (args):
 
     database = Database (args.database, args.password)
-    frame = pd.DataFrame (columns=['id', 'description', 'type', 'encrypted', 'entries'])
+    frame = pd.DataFrame (columns=['id', 'description', 'type', 'entries'])
 
     for channel in database.get_all_channels ():
         data = database.get (channel.id)
-        frame.loc[len (frame)] = [channel.id, channel.description, channel.type.__name__, (channel.encrypted == 1), len (data)]
+        frame.loc[len (frame)] = [channel.id, channel.description, channel.type.__name__, len (data)]
 
     core.common.print_frame ('Channels', frame)
+
+    print ('')
+    print ('Credentials')
+    print ('-----------')
+
+    for cred in sorted (database.get_all_credential_ids ()):
+        print (cred)
 
 
 #--------------------------------------------------------------------------
