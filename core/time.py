@@ -5,6 +5,7 @@
 # Frank Blankenburg, Jun. 2017
 #
 
+import copy
 import dateutil.parser
 import pandas as pd
 
@@ -51,6 +52,8 @@ class Timestamp:
             self.timestamp = self.timestamp.replace (minute=0, second=0, microsecond=0)
         elif Configuration.DATABASE_SAMPLING_INTERVAL is Interval.minute:
             self.timestamp = self.timestamp.replace (second=0, microsecond=0)
+        else:
+            raise RuntimeError ('Unhandled sampling interval')
 
     #
     # Advance time by some days / hours
@@ -74,6 +77,12 @@ class Timestamp:
                 self.timestamp += delta
             else:
                 self.timestamp -= delta
+
+    #
+    # Create deep copy of this object
+    #
+    def copy (self):
+        return copy.deepcopy (self)
 
     #
     # Return timestamp in UNIX epoch seconds
@@ -129,4 +138,11 @@ class Timestamp:
         return int (round (self.timestamp.timestamp ()))
 
     def __repr__ (self):
-        return self.timestamp.strftime ('%Y-%m-%d %Hh')
+        if Configuration.DATABASE_SAMPLING_INTERVAL is Interval.day:
+            return self.timestamp.strftime ('%Y-%m-%d')
+        elif Configuration.DATABASE_SAMPLING_INTERVAL is Interval.hour:
+            return self.timestamp.strftime ('%Y-%m-%d %Hh')
+        elif Configuration.DATABASE_SAMPLING_INTERVAL is Interval.minute:
+            return self.timestamp.strftime ('%Y-%m-%d %H:%M')
+
+        raise RuntimeError ('Unhandled sampling interval')

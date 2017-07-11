@@ -105,6 +105,10 @@ class CryptoCompareScraper (Scraper):
                         price_time = Timestamp (price['time'])
                         price = (price['high'] + price['low']) / 2
 
+                        #
+                        # The REST API returns '0' for times where no information is available instead of
+                        # raising an exception.
+                        #
                         if price_time >= Timestamp (Configuration.DATABASE_START_DATE) and price > 0:
                             entries.append (Entry (timestamp=price_time, value=price))
 

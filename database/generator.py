@@ -6,13 +6,12 @@
 #
 
 import argparse
-import copy
-import itertools
 import math
 import numpy as np
 import scraper
 
 from core.config import Configuration
+from core.time import Timestamp
 from database.database import Database
 
 
@@ -31,6 +30,7 @@ class Generator:
     # @param batchsize Size of a training batch
     #
     def __init__ (self, database, batchsize):
+
         self.database = database
         self.batchsize = batchsize
 
@@ -50,23 +50,21 @@ class Generator:
 
         timestamps = {k: v for k, v in timestamps.items () if len (v) == len (self.channels)}
 
-        print (sorted (timestamps.keys ()))
-
         #
         # Compute the time span with complete data which can be used for training
         #
         keys = sorted (timestamps.keys ())
 
         self.block_end = keys[-1] if keys else None
-        self.block_start = copy.deepcopy (self.block_end)
+        self.block_start = self.block_end.copy ()
         self.steps = 0
 
         if self.block_end:
-            previous = copy.deepcopy (self.block_start)
+            previous = self.block_start.copy ()
             previous.advance (step=-Configuration.DATABASE_SAMPLING_STEP)
 
             while previous in timestamps:
-                self.block_start = previous
+                self.block_start = previous.copy ()
                 previous.advance (step=-Configuration.DATABASE_SAMPLING_STEP)
 
             self.steps = (self.block_end - self.block_start) / Configuration.DATABASE_SAMPLING_STEP
@@ -122,13 +120,19 @@ class Generator:
 
         timestamps = {}
 
-        for channel in [channel for channel in database.get_all_channels () if channel.type is float]:
+        for channel in database.get_all_channels ():
 
-            for entry in database.get (channel.id):
-                if entry.timestamp not in timestamps:
-                    timestamps[entry.timestamp] = [channel.id]
-                else:
-                    timestamps[entry.timestamp].append (channel.id)
+            if channel.type is float:
+
+                for entry in database.get (channel.id):
+
+                    if entry.timestamp not in timestamps:
+                        timestamps[entry.timestamp] = [channel.id]
+                    else:
+                        timestamps[entry.timestamp].append (channel.id)
+
+        for key in timestamps.keys ():
+            timestamps[key].sort ()
 
         return timestamps
 
@@ -137,6 +141,7 @@ class Generator:
 # MAIN
 #
 if __name__ == '__main__':
+
     parser = argparse.ArgumentParser ()
 
     parser.add_argument ('-b', '--batchsize', type=int, default=50, help='Training batchsize / sequence length')
@@ -148,9 +153,32 @@ if __name__ == '__main__':
     database = Database (args.database, args.password)
     generator = Generator (database, args.batchsize)
 
+    #
+    # Compute the channel which is limiting the number of sequences
+    #
+    timestamps = generator.create_timestamp_map ()
+    limiting_channels = '-'
+
+    if generator.block_start != generator.start:
+
+        t = generator.block_start.copy ()
+        assert generator.block_start in timestamps
+
+        channels_block_start = set (timestamps[t])
+        t.advance (step=-Configuration.DATABASE_SAMPLING_STEP)
+
+        if t in timestamps:
+            limiting_channels = [x for x in channels_block_start if x not in timestamps[t]]
+        else:
+            limiting_channels = 'all'
+
     print ('Summary')
     print ('-------')
-
-    print ('Latest entry in database: ')
-
-    print (generator.get_number_of_sequences ())
+    print ('Channels                        : ', generator.channels)
+    print ('Earliest entry                  : ', generator.start)
+    print ('Latest entry                    : ', generator.end)
+    print ('Continuous complete block start : ', generator.block_start)
+    print ('Continuous complete block end   : ', generator.block_end)
+    print ('Number of steps                 : ', generator.steps)
+    print ('Number of sequences             : ', generator.get_number_of_sequences ())
+    print ('Limiting channels               : ', limiting_channels)

@@ -339,11 +339,19 @@ def database_list (args):
 def database_summary (args):
 
     database = Database (args.database, args.password)
-    frame = pd.DataFrame (columns=['id', 'description', 'type', 'entries'])
+    frame = pd.DataFrame (columns=['id', 'description', 'type', 'entries', 'last course (USD)', 'start time', 'end time'])
 
     for channel in database.get_all_channels ():
-        data = database.get (channel.id)
-        frame.loc[len (frame)] = [channel.id, channel.description, channel.type.__name__, len (data)]
+        entries = database.get (channel.id)
+        entries.sort (key=lambda entry: entry.timestamp)
+
+        frame.loc[len (frame)] = [channel.id,
+                                  channel.description,
+                                  channel.type.__name__,
+                                  len (entries),
+                                  entries[-1].value if channel.type is float else '<text>',
+                                  entries[0].timestamp,
+                                  entries[-1].timestamp]
 
     core.common.print_frame ('Channels', frame)
 
