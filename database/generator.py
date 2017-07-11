@@ -13,6 +13,41 @@ import scraper
 from core.config import Configuration
 from database.database import Database
 
+#----------------------------------------------------------------------------
+# CLASS Sequence
+#
+# Object keeping the data of a single training sequence
+#
+class Sequence:
+
+    #
+    # Setup sequence
+    #
+    # The sequence data is normalized upon construction
+    #
+    # @param x Input data as a numpy array with shape (y=batchsize, x=channels)
+    # @param y Expected data as a numpy array with shape (y=1, x=channels)
+    #
+    def __init__ (self, x, y):
+
+        assert isinstance (x, np.ndarray)
+        assert isinstance (y, np.ndarray)
+        assert x.shape[1] == y.shape[1]
+        assert y.shape[0] == 1
+
+        self.x = x
+        self.y = y
+
+        n = np.concatenate ((x, y))
+        self.norm = np.linalg.norm (n)
+
+        if not math.isclose (self.norm, 0):
+            self.x /= self.norm
+            self.y /= self.norm
+
+    def __repr__ (self):
+        return 'Sequence (x={x}, y={y}, norm={norm})'.format (x=self.x, y=self.y, norm=self.norm)
+
 
 #----------------------------------------------------------------------------
 # CLASS Generator
@@ -92,29 +127,48 @@ class Generator:
     #
     # Return sequence at the given index
     #
+    # @return Single training sequence consisting of a input data / expected data tuple
+    #
     def get_sequence (self, index):
 
         if index >= self.get_number_of_sequences ():
             raise RuntimeError ('Index {index} out of bounds. There are {sequences} valid sequences.'
                                 .format (index=index, sequences=self.get_number_of_sequences ()))
 
-        sequence = np.zeros ((self.batchsize, len (self.channels)))
+        input_data = np.zeros ((self.batchsize, len (self.channels)))
+        expected_data = np.zeros ((1, len (self.channels)))
 
         for x in range (len (self.channels)):
             channel = self.channels[x]
 
-            entries = database.get (channel.id)
+            entries = database.get (channel)
 
+            #
+            # Build input data array
+            #
             for y in range (self.batchsize):
+                assert index + y < len (entries)
                 entry = entries[index + y]
 
                 if not isinstance (entry.value, float):
-                    raise RuntimeError ('Non numeric data present in channel \'{channel}\' as position {position}'
+                    raise RuntimeError ('Non numeric data present in channel \'{channel}\' at position {position}'
                                         .format (channel=channel.id, position=index + y))
 
-                sequence[y][x] = entry.value
+                input_data[y][x] = entry.value
 
-        return sequence
+            #
+            # Build expected data array
+            #
+            assert index + self.batchsize < len (entries)
+            entry = entries[index + self.batchsize]
+
+            if not isinstance (entry.value, float):
+                raise RuntimeError ('Non numeric data present in channel \'{channel}\' at position {position}'
+                                    .format (channel=channel.id, position=index + y))
+
+            expected_data[0][x] = entry.value
+
+        return Sequence (input_data, expected_data)
 
     #
     # Return all timestamps available in the database together with the ids of the
