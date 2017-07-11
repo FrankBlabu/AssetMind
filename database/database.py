@@ -71,6 +71,7 @@ class Database:
 
         self.encryption = Encryption ()
         self.types = {str.__name__: str, float.__name__: float}
+        self.active_channels = []
 
         self.file = file
         self.password = password
@@ -130,6 +131,8 @@ class Database:
                     self.cursor.execute (command)
                 except sqlite3.OperationalError as e:
                     exists = True
+
+                self.active_channels.append (channel.id)
 
                 #
                 # Register type in channel database
@@ -239,7 +242,7 @@ class Database:
     #
     # Return administrative entries for all channels
     #
-    def get_all_channels (self):
+    def get_all_channels (self, active_channels_only=True):
 
         command = 'SELECT * FROM "{table}"'.format (table=Database.CHANNELS_ID)
 
@@ -249,7 +252,11 @@ class Database:
 
         for row in rows:
             assert row[2] in self.types
-            entries.append (Channel (id=row[0], description=row[1], type_id=self.types[row[2]]))
+
+            id = row[0]
+
+            if not active_channels_only or id in self.active_channels:
+                entries.append (Channel (id=id, description=row[1], type_id=self.types[row[2]]))
 
         return entries
 
@@ -339,7 +346,7 @@ def database_list (args):
 def database_summary (args):
 
     database = Database (args.database, args.password)
-    frame = pd.DataFrame (columns=['id', 'description', 'type', 'entries', 'last course (USD)', 'start time', 'end time'])
+    frame = pd.DataFrame (columns=['id', 'description', 'type', 'entries', 'last value', 'start time', 'end time'])
 
     for channel in database.get_all_channels ():
         entries = database.get (channel.id)

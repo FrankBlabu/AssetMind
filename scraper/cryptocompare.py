@@ -39,8 +39,8 @@ class CryptoCompareScraper (Scraper):
 
         channels.append (Channel (id='{scraper}::ETH'.format (scraper=CryptoCompareScraper.ID),
                                   description='Ethereum course (CryptoCompare)', type_id=float))
-        channels.append (Channel (id='{scraper}::ETC'.format (scraper=CryptoCompareScraper.ID),
-                                  description='Ethereum classic course (CryptoCompare)', type_id=float))
+        #channels.append (Channel (id='{scraper}::ETC'.format (scraper=CryptoCompareScraper.ID),
+        #                          description='Ethereum classic course (CryptoCompare)', type_id=float))
         channels.append (Channel (id='{scraper}::BTC'.format (scraper=CryptoCompareScraper.ID),
                                   description='Bitcoin course (CryptoCompare)', type_id=float))
         channels.append (Channel (id='{scraper}::XMR'.format (scraper=CryptoCompareScraper.ID),
@@ -49,8 +49,8 @@ class CryptoCompareScraper (Scraper):
                                   description='Ripple course (CryptoCompare)', type_id=float))
         channels.append (Channel (id='{scraper}::LTC'.format (scraper=CryptoCompareScraper.ID),
                                   description='Litecoin course (CryptoCompare)', type_id=float))
-        channels.append (Channel (id='{scraper}::ZEC'.format (scraper=CryptoCompareScraper.ID),
-                                  description='ZCash course (CryptoCompare)', type_id=float))
+        #channels.append (Channel (id='{scraper}::ZEC'.format (scraper=CryptoCompareScraper.ID),
+        #                          description='ZCash course (CryptoCompare)', type_id=float))
         channels.append (Channel (id='{scraper}::DASH'.format (scraper=CryptoCompareScraper.ID),
                                   description='Dash course (CryptoCompare)', type_id=float))
 

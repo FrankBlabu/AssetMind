@@ -11,7 +11,6 @@ import numpy as np
 import scraper
 
 from core.config import Configuration
-from core.time import Timestamp
 from database.database import Database
 
 
@@ -57,7 +56,6 @@ class Generator:
 
         self.block_end = keys[-1] if keys else None
         self.block_start = self.block_end.copy ()
-        self.steps = 0
 
         if self.block_end:
             previous = self.block_start.copy ()
@@ -67,10 +65,20 @@ class Generator:
                 self.block_start = previous.copy ()
                 previous.advance (step=-Configuration.DATABASE_SAMPLING_STEP)
 
-            self.steps = (self.block_end - self.block_start) / Configuration.DATABASE_SAMPLING_STEP
-
         if self.get_number_of_sequences () < 1:
             raise RuntimeError ('Batchsize too large for available data')
+
+    #
+    # Return the channels used by the generator
+    #
+    def get_channels (self):
+        return self.channels
+
+    #
+    # Return number of steps in the continuous data interval
+    #
+    def get_number_of_steps (self):
+        return int (math.floor ((self.block_end - self.block_start) / Configuration.DATABASE_SAMPLING_STEP))
 
     #
     # Return number of available sequences
@@ -79,7 +87,7 @@ class Generator:
     # there is at least one additional step following left to be the expected outcome
     #
     def get_number_of_sequences (self):
-        return int (math.floor (self.steps - self.batchsize - 1))
+        return int (math.floor (self.get_number_of_steps () - self.batchsize - 1))
 
     #
     # Return sequence at the given index
@@ -172,13 +180,17 @@ if __name__ == '__main__':
         else:
             limiting_channels = 'all'
 
+    all_channels = [channel.id for channel in database.get_all_channels (active_channels_only=False)]
+    inactive_channels = sorted ([channel for channel in all_channels if channel not in generator.channels])
+
     print ('Summary')
     print ('-------')
-    print ('Channels                        : ', generator.channels)
+    print ('Active channels                 : ', generator.get_channels ())
+    print ('Inactive channels               : ', inactive_channels)
     print ('Earliest entry                  : ', generator.start)
     print ('Latest entry                    : ', generator.end)
     print ('Continuous complete block start : ', generator.block_start)
     print ('Continuous complete block end   : ', generator.block_end)
-    print ('Number of steps                 : ', generator.steps)
+    print ('Number of steps                 : ', generator.get_number_of_steps ())
     print ('Number of sequences             : ', generator.get_number_of_sequences ())
     print ('Limiting channels               : ', limiting_channels)
